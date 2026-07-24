@@ -4,6 +4,8 @@
  * entrar, estes tipos viram as linhas das tabelas quase sem mudança.
  */
 
+import type { EventoTipo } from "@/lib/agenda-data";
+
 export type ContatoStatus = "lead" | "ativo" | "cliente" | "inativo";
 
 export type Origem =
@@ -245,6 +247,16 @@ export const PRIORIDADE_LABEL: Record<Prioridade, string> = {
   media: "Média",
   baixa: "Baixa",
 };
+
+export interface EventoAgenda {
+  id: string;
+  titulo: string;
+  inicio: string; // ISO
+  fim: string; // ISO
+  tipo: EventoTipo;
+  local: string;
+  contatoId?: string;
+}
 
 export type NotifTipo = "lead" | "negocio" | "agente" | "tarefa" | "sistema";
 
