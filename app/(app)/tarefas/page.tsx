@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Plus,
   Circle,
   CheckCircle2,
   Phone,
@@ -10,23 +9,31 @@ import {
   Video,
   StickyNote,
   CheckSquare,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 
 import { Topbar } from "@/components/app/topbar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { TAREFAS } from "@/lib/tarefas-data";
-import { getContato, getUsuario, USUARIO_ATUAL } from "@/lib/mock-data";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { NovaTarefaDialog } from "@/components/app/tarefas/nova-tarefa-dialog";
+import { EditarTarefaDialog } from "@/components/app/tarefas/editar-tarefa-dialog";
 import {
   PRIORIDADE_LABEL,
+  type Contato,
   type Prioridade,
   type Tarefa,
   type TipoAtividade,
 } from "@/lib/types";
 import { cn, formatDate, initials } from "@/lib/utils";
 
-const HOJE = new Date(2026, 6, 24);
+const RESPONSAVEL_ATUAL = "Gabriel Pereira";
 
 const TIPO_ICON: Record<TipoAtividade, LucideIcon> = {
   ligacao: Phone,
@@ -49,25 +56,65 @@ const FILTROS: { id: Filtro; label: string }[] = [
   { id: "alta", label: "Alta prioridade" },
 ];
 
-function diasDeHoje(iso: string) {
+function diasDeHoje(iso: string, hoje: Date) {
   const d = new Date(iso + "T00:00:00");
-  return Math.round((d.getTime() - HOJE.getTime()) / 86400000);
+  return Math.round((d.getTime() - hoje.getTime()) / 86400000);
 }
 
 export default function TarefasPage() {
-  const [tarefas, setTarefas] = useState<Tarefa[]>(TAREFAS);
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [contatos, setContatos] = useState<Contato[]>([]);
   const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [editando, setEditando] = useState<Tarefa | null>(null);
 
-  function alternar(id: string) {
-    setTarefas((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, concluida: !t.concluida } : t))
-    );
+  const hoje = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/tarefas", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { tarefas: [] }))
+      .then(({ tarefas: lista }) => setTarefas(lista ?? []));
+    fetch("/api/contatos", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { contatos: [] }))
+      .then(({ contatos: lista }) => setContatos(lista ?? []));
+  }, []);
+
+  function getContato(id?: string) {
+    return id ? contatos.find((c) => c.id === id) : undefined;
+  }
+
+  async function alternar(t: Tarefa) {
+    const concluida = !t.concluida;
+    setTarefas((prev) => prev.map((x) => (x.id === t.id ? { ...x, concluida } : x)));
+    await fetch(`/api/tarefas/${t.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concluida }),
+    });
+  }
+
+  function aoCriar(tarefa: Tarefa) {
+    setTarefas((prev) => [...prev, tarefa]);
+  }
+
+  function aoSalvarEdicao(tarefa: Tarefa) {
+    setTarefas((prev) => prev.map((t) => (t.id === tarefa.id ? tarefa : t)));
+  }
+
+  async function excluir(tarefa: Tarefa) {
+    if (!window.confirm(`Excluir "${tarefa.titulo}" permanentemente?`)) return;
+    const res = await fetch(`/api/tarefas/${tarefa.id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    setTarefas((prev) => prev.filter((t) => t.id !== tarefa.id));
   }
 
   const filtradas = useMemo(
     () =>
       tarefas.filter((t) => {
-        if (filtro === "minhas") return t.responsavelId === USUARIO_ATUAL.id;
+        if (filtro === "minhas") return t.responsavelId === RESPONSAVEL_ATUAL;
         if (filtro === "alta") return t.prioridade === "alta";
         return true;
       }),
@@ -84,31 +131,30 @@ export default function TarefasPage() {
     for (const t of filtradas) {
       if (t.concluida) g.concluidas.push(t);
       else {
-        const d = diasDeHoje(t.vencimento);
+        const d = diasDeHoje(t.vencimento, hoje);
         if (d < 0) g.atrasadas.push(t);
         else if (d === 0) g.hoje.push(t);
         else g.proximas.push(t);
       }
     }
     return g;
-  }, [filtradas]);
+  }, [filtradas, hoje]);
 
   const atrasadas = grupos.atrasadas.length;
-  const hoje = grupos.hoje.length;
+  const hojeCount = grupos.hoje.length;
 
-  const SECOES: { key: keyof typeof grupos; label: string; forte?: boolean }[] =
-    [
-      { key: "atrasadas", label: "Atrasadas", forte: true },
-      { key: "hoje", label: "Hoje" },
-      { key: "proximas", label: "Próximas" },
-      { key: "concluidas", label: "Concluídas" },
-    ];
+  const SECOES: { key: keyof typeof grupos; label: string }[] = [
+    { key: "atrasadas", label: "Atrasadas" },
+    { key: "hoje", label: "Hoje" },
+    { key: "proximas", label: "Próximas" },
+    { key: "concluidas", label: "Concluídas" },
+  ];
 
   return (
     <>
       <Topbar
         title="Tarefas & lembretes"
-        description={`${atrasadas} atrasadas · ${hoje} para hoje`}
+        description={`${atrasadas} atrasadas · ${hojeCount} para hoje`}
       />
 
       <div className="space-y-4 p-4 md:p-6">
@@ -130,10 +176,7 @@ export default function TarefasPage() {
               </button>
             ))}
           </div>
-          <Button variant="brand" className="gap-1.5">
-            <Plus className="size-4" />
-            Nova tarefa
-          </Button>
+          <NovaTarefaDialog contatos={contatos} onCriada={aoCriar} />
         </div>
 
         <div className="mx-auto max-w-3xl space-y-5">
@@ -152,7 +195,15 @@ export default function TarefasPage() {
                 </div>
                 <div className="overflow-hidden rounded-lg border border-border bg-card divide-y divide-border panel-sm">
                   {itens.map((t) => (
-                    <TarefaRow key={t.id} tarefa={t} onToggle={alternar} />
+                    <TarefaRow
+                      key={t.id}
+                      tarefa={t}
+                      contato={getContato(t.contatoId)}
+                      hoje={hoje}
+                      onToggle={() => alternar(t)}
+                      onEditar={() => setEditando(t)}
+                      onExcluir={() => excluir(t)}
+                    />
                   ))}
                 </div>
               </section>
@@ -160,21 +211,36 @@ export default function TarefasPage() {
           })}
         </div>
       </div>
+
+      <EditarTarefaDialog
+        tarefa={editando}
+        contatos={contatos}
+        onOpenChange={(open) => {
+          if (!open) setEditando(null);
+        }}
+        onSalvo={aoSalvarEdicao}
+      />
     </>
   );
 }
 
 function TarefaRow({
   tarefa: t,
+  contato,
+  hoje,
   onToggle,
+  onEditar,
+  onExcluir,
 }: {
   tarefa: Tarefa;
-  onToggle: (id: string) => void;
+  contato: Contato | undefined;
+  hoje: Date;
+  onToggle: () => void;
+  onEditar: () => void;
+  onExcluir: () => void;
 }) {
   const Icon = TIPO_ICON[t.tipo];
-  const contato = t.contatoId ? getContato(t.contatoId) : undefined;
-  const resp = getUsuario(t.responsavelId);
-  const atrasada = !t.concluida && diasDeHoje(t.vencimento) < 0;
+  const atrasada = !t.concluida && diasDeHoje(t.vencimento, hoje) < 0;
 
   return (
     <div className="flex items-center gap-3 p-3">
@@ -183,7 +249,7 @@ function TarefaRow({
         aria-hidden
       />
       <button
-        onClick={() => onToggle(t.id)}
+        onClick={onToggle}
         aria-label={t.concluida ? "Reabrir tarefa" : "Concluir tarefa"}
         className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
       >
@@ -218,13 +284,28 @@ function TarefaRow({
         </div>
       </div>
 
-      {resp ? (
-        <Avatar className="size-7 shrink-0">
-          <AvatarFallback className="text-[10px]">
-            {initials(resp.nome)}
-          </AvatarFallback>
-        </Avatar>
-      ) : null}
+      <Avatar className="size-7 shrink-0">
+        <AvatarFallback className="text-[10px]">
+          {initials(t.responsavelId)}
+        </AvatarFallback>
+      </Avatar>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label={`Ações de ${t.titulo}`}>
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onEditar}>Editar</DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={onExcluir}
+          >
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
