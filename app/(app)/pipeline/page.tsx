@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { MoveRight, GripVertical } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MoveRight, GripVertical, Plus } from "lucide-react";
 
 import { Topbar } from "@/components/app/topbar";
-import {
-  Avatar,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +14,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { NEGOCIOS, getContato } from "@/lib/mock-data";
-import { STAGES, type Negocio, type PipelineStage } from "@/lib/types";
+import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
+import {
+  STAGES,
+  type Contato,
+  type Negocio,
+  type PipelineStage,
+} from "@/lib/types";
 import { cn, formatBRL, initials } from "@/lib/utils";
 
 const STAGE_ACCENT: Record<PipelineStage, string> = {
@@ -30,12 +33,34 @@ const STAGE_ACCENT: Record<PipelineStage, string> = {
 };
 
 export default function PipelinePage() {
-  const [negocios, setNegocios] = useState<Negocio[]>(NEGOCIOS);
+  const [negocios, setNegocios] = useState<Negocio[]>([]);
+  const [contatos, setContatos] = useState<Contato[]>([]);
+  const [novoAberto, setNovoAberto] = useState(false);
 
-  function mover(id: string, stage: PipelineStage) {
-    setNegocios((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, stage } : n))
-    );
+  useEffect(() => {
+    fetch("/api/negocios", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { negocios: [] }))
+      .then(({ negocios: lista }) => setNegocios(lista ?? []));
+    fetch("/api/contatos", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { contatos: [] }))
+      .then(({ contatos: lista }) => setContatos(lista ?? []));
+  }, []);
+
+  function getContato(id: string) {
+    return contatos.find((c) => c.id === id);
+  }
+
+  async function mover(id: string, stage: PipelineStage) {
+    setNegocios((prev) => prev.map((n) => (n.id === id ? { ...n, stage } : n)));
+    await fetch(`/api/negocios/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
+    });
+  }
+
+  function aoCriar(negocio: Negocio) {
+    setNegocios((prev) => [...prev, negocio]);
   }
 
   const totalAberto = negocios
@@ -50,6 +75,17 @@ export default function PipelinePage() {
       />
 
       <div className="p-4 md:p-6">
+        <div className="mb-4 flex justify-end">
+          <Button
+            variant="brand"
+            className="gap-1.5"
+            onClick={() => setNovoAberto(true)}
+          >
+            <Plus className="size-4" />
+            Novo negócio
+          </Button>
+        </div>
+
         <div className="flex gap-4 overflow-x-auto pb-2">
           {STAGES.map((stage, i) => {
             const deals = negocios.filter((n) => n.stage === stage.id);
@@ -60,7 +96,6 @@ export default function PipelinePage() {
                 className="reveal flex w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card panel-sm"
                 style={{ animationDelay: `${i * 70}ms` }}
               >
-                {/* Cabeçalho da coluna */}
                 <div className="border-b border-border-strong">
                   <div className={cn("h-1", STAGE_ACCENT[stage.id])} />
                   <div className="flex items-center justify-between p-3">
@@ -78,7 +113,6 @@ export default function PipelinePage() {
                   </div>
                 </div>
 
-                {/* Cards */}
                 <div className="flex flex-1 flex-col gap-2 p-2">
                   {deals.map((n) => {
                     const contato = getContato(n.contatoId);
@@ -93,7 +127,7 @@ export default function PipelinePage() {
                           </p>
                           <DropdownMenu>
                             <DropdownMenuTrigger
-                              aria-label="Mover negócio"
+                              aria-label="Ações do negócio"
                               className="mt-0.5 shrink-0 text-muted-foreground outline-none hover:text-foreground"
                             >
                               <GripVertical className="size-4" />
@@ -154,6 +188,13 @@ export default function PipelinePage() {
           })}
         </div>
       </div>
+
+      <NovoNegocioDialog
+        open={novoAberto}
+        onOpenChange={setNovoAberto}
+        contatos={contatos}
+        onCriado={aoCriar}
+      />
     </>
   );
 }
