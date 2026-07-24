@@ -14,6 +14,9 @@ export async function PATCH(
   if (typeof body.contatoId === "string" && body.contatoId) {
     update.contact_id = body.contatoId;
   }
+  if (body.status === "aberta" || body.status === "encerrada") {
+    update.status = body.status;
+  }
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase

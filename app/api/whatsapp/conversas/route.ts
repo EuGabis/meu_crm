@@ -6,7 +6,7 @@ export async function GET() {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("whatsapp_conversations")
-    .select("*, whatsapp_messages(id, direction, sender, body, sent_at)")
+    .select("*, whatsapp_messages(id, direction, sender, body, status, sent_at)")
     .order("last_message_at", { ascending: false });
 
   if (error) {

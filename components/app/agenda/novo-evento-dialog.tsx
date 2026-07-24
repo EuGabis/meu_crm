@@ -39,12 +39,14 @@ export function NovoEventoDialog({
   onOpenChange,
   contatos,
   diaSelecionado,
+  contatoInicialId,
   onCriado,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contatos: Contato[];
   diaSelecionado: Date;
+  contatoInicialId?: string;
   onCriado: (evento: EventoAgenda) => void;
 }) {
   const [titulo, setTitulo] = useState("");
@@ -66,10 +68,10 @@ export function NovoEventoDialog({
       setHoraFim("10:00");
       setTipo("reuniao");
       setLocal("");
-      setContatoId("");
+      setContatoId(contatoInicialId ?? "");
       setErro(null);
     }
-  }, [open, diaSelecionado]);
+  }, [open, diaSelecionado, contatoInicialId]);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();

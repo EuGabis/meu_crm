@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import type { Conversa } from "@/lib/types";
 import { cn, initials } from "@/lib/utils";
 
-type Filtro = "todas" | "naolidas" | "agentes";
+type Filtro = "abertas" | "naolidas" | "encerradas";
 
 const FILTROS: { id: Filtro; label: string }[] = [
-  { id: "todas", label: "Todas" },
+  { id: "abertas", label: "Abertas" },
   { id: "naolidas", label: "Não lidas" },
-  { id: "agentes", label: "Agentes" },
+  { id: "encerradas", label: "Encerradas" },
 ];
 
 export function ConversationList({
@@ -28,16 +28,17 @@ export function ConversationList({
   className?: string;
 }) {
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [filtro, setFiltro] = useState<Filtro>("abertas");
 
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return conversas.filter((c) => {
-      const matchBusca = !q || c.nome.toLowerCase().includes(q);
+      const matchBusca =
+        !q || c.nome.toLowerCase().includes(q) || c.telefone.includes(q);
       const matchFiltro =
-        filtro === "todas" ||
-        (filtro === "naolidas" && c.naoLidas > 0) ||
-        (filtro === "agentes" && c.atendidoPor === "agente");
+        (filtro === "abertas" && c.status !== "encerrada") ||
+        (filtro === "naolidas" && c.naoLidas > 0 && c.status !== "encerrada") ||
+        (filtro === "encerradas" && c.status === "encerrada");
       return matchBusca && matchFiltro;
     });
   }, [conversas, busca, filtro]);
@@ -130,7 +131,11 @@ export function ConversationList({
                     </span>
                   ) : null}
                 </div>
-                {c.atendidoPor === "agente" ? (
+                {c.status === "encerrada" ? (
+                  <span className="mt-1 inline-flex items-center rounded-sm bg-status-lost-surface px-1.5 py-0.5 text-[10px] text-status-lost">
+                    Encerrada
+                  </span>
+                ) : c.atendidoPor === "agente" ? (
                   <span className="mt-1 inline-flex items-center gap-1 rounded-sm bg-elevated px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     <Bot className="size-3 text-brand" />
                     {c.agenteNome} respondendo

@@ -210,9 +210,13 @@ export interface Mensagem {
   autor: MsgAutor;
   texto: string;
   hora: string; // "14:32"
+  dataISO?: string; // timestamp completo, para separadores de data
+  falhou?: boolean; // envio recusado pela Evolution API
 }
 
 export type AtendidoPor = "humano" | "agente" | "aguardando";
+
+export type ConversaStatus = "aberta" | "encerrada";
 
 export interface Conversa {
   id: string;
@@ -222,6 +226,7 @@ export interface Conversa {
   ultimaHora: string;
   naoLidas: number;
   atendidoPor: AtendidoPor;
+  status: ConversaStatus;
   agenteNome?: string;
   online?: boolean;
   mensagens: Mensagem[];

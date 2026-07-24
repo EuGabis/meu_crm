@@ -1,10 +1,17 @@
-import type { AtendidoPor, Conversa, Mensagem, MsgAutor } from "@/lib/types";
+import type {
+  AtendidoPor,
+  Conversa,
+  ConversaStatus,
+  Mensagem,
+  MsgAutor,
+} from "@/lib/types";
 
 export interface DbMessageRow {
   id: string;
   direction: "inbound" | "outbound";
   sender: string;
   body: string;
+  status: string | null;
   sent_at: string;
 }
 
@@ -15,6 +22,7 @@ export interface DbConversationRow {
   atendido_por: string;
   unread_count: number;
   contact_id: string | null;
+  status?: string | null;
   whatsapp_messages: DbMessageRow[];
 }
 
@@ -33,6 +41,8 @@ export function mapConversationRow(row: DbConversationRow): Conversa {
       autor: m.sender as MsgAutor,
       texto: m.body,
       hora: formatHora(m.sent_at),
+      dataISO: m.sent_at,
+      falhou: m.status === "failed",
     }));
 
   return {
@@ -43,6 +53,7 @@ export function mapConversationRow(row: DbConversationRow): Conversa {
     ultimaHora: mensagens[mensagens.length - 1]?.hora ?? "",
     naoLidas: row.unread_count,
     atendidoPor: row.atendido_por as AtendidoPor,
+    status: (row.status ?? "aberta") as ConversaStatus,
     mensagens,
   };
 }

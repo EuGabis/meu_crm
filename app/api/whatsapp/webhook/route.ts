@@ -100,6 +100,12 @@ async function handleMessagesUpsert(data: Record<string, unknown>) {
       .from("whatsapp_conversations")
       .update({ unread_count: (conversation.unread_count ?? 0) + 1 })
       .eq("id", conversation.id);
+
+    // Cliente respondeu: conversa encerrada volta a ficar aberta.
+    await supabase
+      .from("whatsapp_conversations")
+      .update({ status: "aberta" })
+      .eq("id", conversation.id);
   }
 
   if (!conversation.contact_id) {

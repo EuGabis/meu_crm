@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
+import { NovoEventoDialog } from "@/components/app/agenda/novo-evento-dialog";
 import {
   CONTATO_STATUS_LABEL,
   STAGES,
@@ -48,6 +49,7 @@ export function ContactPanel({
   className?: string;
 }) {
   const [negocioAberto, setNegocioAberto] = useState(false);
+  const [reuniaoAberta, setReuniaoAberta] = useState(false);
   const [trocando, setTrocando] = useState(false);
 
   const contato = conversa.contatoId
@@ -141,7 +143,12 @@ export function ContactPanel({
           <Plus className="size-4" />
           Criar negócio
         </Button>
-        <Button variant="outline" className="w-full justify-start gap-2" disabled>
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          disabled={!contato}
+          onClick={() => setReuniaoAberta(true)}
+        >
           <CalendarPlus className="size-4" />
           Agendar reunião
         </Button>
@@ -183,6 +190,17 @@ export function ContactPanel({
           contatos={contatos}
           contatoFixo={contato}
           onCriado={onNegocioCriado}
+        />
+      ) : null}
+
+      {contato ? (
+        <NovoEventoDialog
+          open={reuniaoAberta}
+          onOpenChange={setReuniaoAberta}
+          contatos={contatos}
+          diaSelecionado={new Date()}
+          contatoInicialId={contato.id}
+          onCriado={() => {}}
         />
       ) : null}
     </aside>

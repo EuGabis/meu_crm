@@ -129,6 +129,26 @@ export default function InboxPage() {
     setNegocios((prev) => [...prev, negocio]);
   }
 
+  function mudarStatus(status: "aberta" | "encerrada") {
+    if (!selId) return;
+    setConversas((prev) =>
+      prev.map((c) => (c.id === selId ? { ...c, status } : c))
+    );
+    fetch(`/api/whatsapp/conversas/${selId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, ...(status === "encerrada" ? { unreadCount: 0 } : {}) }),
+    });
+  }
+
+  // Prefere o nome do contato vinculado ao nome de perfil do WhatsApp.
+  const conversasExibicao = conversas.map((c) => {
+    const contato = c.contatoId
+      ? contatos.find((x) => x.id === c.contatoId)
+      : undefined;
+    return contato ? { ...c, nome: contato.nome } : c;
+  });
+
   if (!sel) {
     return (
       <div className="flex h-full flex-col overflow-hidden">
@@ -147,7 +167,7 @@ export default function InboxPage() {
 
       <div className="flex min-h-0 flex-1">
         <ConversationList
-          conversas={conversas}
+          conversas={conversasExibicao}
           selId={sel.id}
           onSelect={selecionar}
           className={cn(
@@ -157,9 +177,11 @@ export default function InboxPage() {
         />
 
         <MessageThread
-          conversa={sel}
+          conversa={conversasExibicao.find((c) => c.id === sel.id) ?? sel}
           onEnviar={enviar}
           onAssumir={assumir}
+          onEncerrar={() => mudarStatus("encerrada")}
+          onReabrir={() => mudarStatus("aberta")}
           onVoltar={() => setMobileView("lista")}
           className={cn(
             "min-w-0 flex-1",
