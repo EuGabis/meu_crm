@@ -1,17 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, MoreHorizontal, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, MoreHorizontal } from "lucide-react";
 
 import { Topbar } from "@/components/app/topbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Avatar,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -27,20 +23,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { CONTATOS } from "@/lib/mock-data";
+import { NovoContatoDialog } from "@/components/app/contatos/novo-contato-dialog";
 import {
   CONTATO_STATUS_LABEL,
   ORIGEM_LABEL,
+  type Contato,
   type ContatoStatus,
 } from "@/lib/types";
 import { cn, formatBRL, formatDate, initials } from "@/lib/utils";
@@ -64,12 +51,19 @@ const STATUS_BADGE: Record<
 };
 
 export default function ContatosPage() {
+  const [contatos, setContatos] = useState<Contato[]>([]);
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState<ContatoStatus | "todos">("todos");
 
+  useEffect(() => {
+    fetch("/api/contatos", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { contatos: [] }))
+      .then(({ contatos: lista }) => setContatos(lista ?? []));
+  }, []);
+
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return CONTATOS.filter((c) => {
+    return contatos.filter((c) => {
       const matchStatus = status === "todos" || c.status === status;
       const matchBusca =
         !q ||
@@ -78,13 +72,17 @@ export default function ContatosPage() {
         c.email.toLowerCase().includes(q);
       return matchStatus && matchBusca;
     });
-  }, [busca, status]);
+  }, [busca, status, contatos]);
+
+  function aoCriar(contato: Contato) {
+    setContatos((prev) => [...prev, contato]);
+  }
 
   return (
     <>
       <Topbar
         title="Contatos"
-        description={`${CONTATOS.length} contatos na base`}
+        description={`${contatos.length} contatos na base`}
       />
 
       <div className="space-y-4 p-4 md:p-6">
@@ -99,7 +97,7 @@ export default function ContatosPage() {
               className="pl-8"
             />
           </label>
-          <NovoContatoDialog />
+          <NovoContatoDialog onCriado={aoCriar} />
         </div>
 
         {/* Filtros por status */}
@@ -181,12 +179,13 @@ export default function ContatosPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Ver detalhes</DropdownMenuItem>
                         <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Criar negócio</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Criar negócio</DropdownMenuItem>
                         <DropdownMenuSeparator />
+                        <DropdownMenuItem>Arquivar</DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:text-destructive">
-                          Arquivar
+                          Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -207,63 +206,5 @@ export default function ContatosPage() {
         </div>
       </div>
     </>
-  );
-}
-
-function NovoContatoDialog() {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="brand" className="gap-1.5">
-          <Plus className="size-4" />
-          Novo contato
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Novo contato</DialogTitle>
-          <DialogDescription>
-            Cadastre um contato na base comercial.
-          </DialogDescription>
-        </DialogHeader>
-        <form
-          className="grid gap-4"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="nome">Nome</Label>
-              <Input id="nome" placeholder="Nome completo" />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="empresa">Empresa</Label>
-              <Input id="empresa" placeholder="Empresa" />
-            </div>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" placeholder="email@empresa.com" />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="telefone">Telefone</Label>
-              <Input id="telefone" placeholder="(11) 90000-0000" />
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancelar
-              </Button>
-            </DialogClose>
-            <DialogClose asChild>
-              <Button type="submit" variant="brand">
-                Salvar contato
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
