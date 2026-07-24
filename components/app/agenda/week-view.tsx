@@ -3,7 +3,6 @@
 import { Video, Phone, CheckSquare, User, type LucideIcon } from "lucide-react";
 
 import {
-  AGORA_HORA,
   HORA_FIM,
   HORA_INICIO,
   TIPO_LABEL,
@@ -44,10 +43,14 @@ export function WeekView({
   dias,
   eventos,
   showNow,
+  agoraHora,
+  onSelecionar,
 }: {
   dias: DiaSemana[];
   eventos: Evento[];
   showNow: boolean;
+  agoraHora: number;
+  onSelecionar?: (evento: Evento) => void;
 }) {
   const horas = Array.from(
     { length: HORA_FIM - HORA_INICIO },
@@ -123,7 +126,7 @@ export function WeekView({
               {/* Linha "agora" */}
               {d.isToday && showNow ? (
                 <div
-                  style={{ top: (AGORA_HORA - HORA_INICIO) * HORA_ALTURA }}
+                  style={{ top: (agoraHora - HORA_INICIO) * HORA_ALTURA }}
                   className="absolute inset-x-0 z-20 flex items-center"
                 >
                   <span className="-ml-1 size-2 rounded-full bg-brand" />
@@ -142,6 +145,7 @@ export function WeekView({
                   return (
                     <button
                       key={e.id}
+                      onClick={() => onSelecionar?.(e)}
                       style={{ top: top + 1, height: altura - 2 }}
                       className={cn(
                         "absolute inset-x-1 z-10 overflow-hidden rounded-md border p-1.5 text-left transition-colors hover:border-brand/50",
