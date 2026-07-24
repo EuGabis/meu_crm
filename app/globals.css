@@ -1,26 +1,246 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/*
+  CRM — Design System "Command Center" (dark, monocromático)
+  Grafite em camadas + acento prata usado com parcimônia. Sem matiz colorido:
+  status e gráficos usam escala de cinza (brilho = significado). Profundidade
+  por elevação e sombra; movimento sutil e intencional.
+*/
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  /* Camadas de grafite (canvas → superfície → elevado) */
+  --background: #0e0e11;
+  --foreground: #e9e9ee;
+
+  --surface: #16161b;
+  --surface-foreground: #e9e9ee;
+  --card: #16161b;
+  --card-foreground: #e9e9ee;
+
+  --elevated: #1e1e25;
+  --popover: #1e1e25;
+  --popover-foreground: #e9e9ee;
+
+  --muted: #212129;
+  --muted-foreground: #9a9aa7;
+  --subtle: #6c6c78;
+
+  /* Primário = quase-branco (botão nítido, premium, sem cor) */
+  --primary: #f3f3f6;
+  --primary-foreground: #14141a;
+
+  --secondary: #212129;
+  --secondary-foreground: #e9e9ee;
+
+  --accent: #212129;
+  --accent-foreground: #ffffff;
+
+  /* Acento monocromático (prata) — ativo, foco, CTAs, destaques de dado. */
+  --brand: #c9ced8;
+  --brand-strong: #e3e6ec;
+  --brand-foreground: #14141a;
+  --brand-muted: rgba(255, 255, 255, 0.08);
+
+  /* Destrutivo mantém um vermelho dessaturado (sinal de perigo é função, não enfeite) */
+  --destructive: #d97070;
+  --destructive-foreground: #1a0d0d;
+
+  --border: #26262f;
+  --border-strong: #383843;
+  --input: #303039;
+  --ring: #c9ced8;
+
+  /* Status — escala monocromática de brilho (sem matiz): apagado → vivo */
+  --status-won: #edeef2;
+  --status-won-surface: rgba(237, 238, 242, 0.1);
+  --status-lost: #75757f;
+  --status-lost-surface: rgba(117, 117, 127, 0.1);
+  --status-open: #9a9aa7;
+  --status-open-surface: rgba(154, 154, 167, 0.1);
+  --status-progress: #c1c5d0;
+  --status-progress-surface: rgba(193, 197, 208, 0.1);
+
+  --radius: 0.5rem;
+
+  /* Elevação */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 20px 50px -12px rgba(0, 0, 0, 0.7);
+  --edge-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-status-won: var(--status-won);
+  --color-status-won-surface: var(--status-won-surface);
+  --color-status-lost: var(--status-lost);
+  --color-status-lost-surface: var(--status-lost-surface);
+  --color-status-open: var(--status-open);
+  --color-status-open-surface: var(--status-open-surface);
+  --color-status-progress: var(--status-progress);
+  --color-status-progress-surface: var(--status-progress-surface);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --animate-reveal: reveal-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-grow-x: grow-x 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade: fade-in 0.4s ease both;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Scrollbars discretas — reforça o clima de painel */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--subtle);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Utilitários customizados via @utility para aceitarem variantes (hover:, etc.) */
+
+/* Superfície elevada com borda de luz no topo (premium, sem glassmorphism) */
+@utility panel {
+  box-shadow: var(--shadow-md), var(--edge-highlight);
+}
+@utility panel-sm {
+  box-shadow: var(--shadow-sm), var(--edge-highlight);
+}
+
+/* Halo neutro suave (usado com muita parcimônia) */
+@utility glow-brand {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 0 22px -6px rgba(255, 255, 255, 0.18);
+}
+
+/* Movimento de entrada */
+@utility reveal {
+  animation: var(--animate-reveal);
+}
+@utility reveal-fade {
+  animation: var(--animate-fade);
+}
+@utility bar-grow {
+  transform-origin: left;
+  animation: var(--animate-grow-x);
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal,
+  .reveal-fade,
+  .bar-grow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

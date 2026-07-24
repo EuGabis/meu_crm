@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Meu CRM
 
-## Getting Started
+CRM de vendas para gestão comercial completa — contatos, pipeline, atendimento e produtividade em um só lugar. Construído para uso interno e para ser clonado e customizado por cliente.
 
-First, run the development server:
+## Funcionalidades
+
+- **Painel** — visão geral do comercial: receita, pipeline, conversão e atividades recentes.
+- **Inbox (WhatsApp)** — conversas em caixa de entrada, com resposta manual e apoio de agentes.
+- **Contatos** — base de contatos com busca, filtros por status e ações rápidas.
+- **Pipeline** — kanban de negócios por etapa, com movimentação entre estágios.
+- **Agenda** — visão de semana com reuniões e compromissos.
+- **Tarefas & lembretes** — organizadas por prazo (atrasadas, hoje, próximas).
+- **Metas & desempenho** — metas do time e por vendedor, com progresso e ritmo.
+- **Relatórios** — funil de conversão, origem dos contatos e desempenho por vendedor.
+- **Automações** — regras que disparam ações a partir de eventos.
+- **Configurações** — conta, equipe & permissões, integrações e agentes de atendimento.
+
+## Stack
+
+- [Next.js 16](https://nextjs.org) (App Router) + [React 19](https://react.dev)
+- [TypeScript](https://www.typescriptlang.org)
+- [Tailwind CSS v4](https://tailwindcss.com)
+- Componentes acessíveis sobre [Radix UI](https://www.radix-ui.com)
+
+> Nesta fase, o front-end consome dados de exemplo tipados em `lib/*-data.ts`.
+> A camada de dados foi desenhada para ser substituída por um backend (Supabase)
+> sem alterações na interface.
+
+## Como rodar
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando         | Descrição                   |
+| --------------- | --------------------------- |
+| `npm run dev`   | Ambiente de desenvolvimento |
+| `npm run build` | Build de produção           |
+| `npm run start` | Sobe o build de produção    |
+| `npm run lint`  | Verificação de lint         |
 
-## Learn More
+## Estrutura
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/(app)/        Rotas da aplicação (painel, inbox, pipeline, agenda, ...)
+components/ui/    Componentes de interface reutilizáveis
+components/app/   Componentes de layout e de cada área
+lib/              Tipos de domínio, utilitários e dados de exemplo
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Pronto para deploy na [Vercel](https://vercel.com). Basta importar o repositório.
