@@ -18,7 +18,7 @@ function extractText(message: Record<string, unknown> | undefined): string | nul
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
+  const token = req.headers.get("apikey");
   if (!token || token !== process.env.EVOLUTION_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Token inválido." }, { status: 401 });
   }

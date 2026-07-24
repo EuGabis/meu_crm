@@ -9,8 +9,12 @@ function getAppBaseUrl(): string {
 
 export async function POST() {
   try {
-    const webhookUrl = `${getAppBaseUrl()}/api/whatsapp/webhook?token=${process.env.EVOLUTION_WEBHOOK_SECRET}`;
-    await setWebhook(webhookUrl, ["MESSAGES_UPSERT", "CONNECTION_UPDATE"]);
+    const webhookUrl = `${getAppBaseUrl()}/api/whatsapp/webhook`;
+    await setWebhook(
+      webhookUrl,
+      ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+      process.env.EVOLUTION_WEBHOOK_SECRET!
+    );
     const qr = await connectInstance();
     return NextResponse.json(qr);
   } catch (error) {

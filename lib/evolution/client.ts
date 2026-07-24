@@ -87,12 +87,23 @@ export async function logoutInstance(): Promise<void> {
   await evolutionFetch(`/instance/logout/${instanceName}`, { method: "DELETE" });
 }
 
-export async function setWebhook(url: string, events: string[]): Promise<void> {
+export async function setWebhook(
+  url: string,
+  events: string[],
+  headerSecret: string
+): Promise<void> {
   const { instanceName } = evolutionConfig();
   await evolutionFetch(`/webhook/set/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({
-      webhook: { enabled: true, url, events, byEvents: false, base64: false },
+      webhook: {
+        enabled: true,
+        url,
+        events,
+        byEvents: false,
+        base64: false,
+        headers: { apikey: headerSecret },
+      },
     }),
   });
 }
