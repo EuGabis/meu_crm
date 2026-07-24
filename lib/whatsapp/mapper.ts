@@ -14,6 +14,7 @@ export interface DbConversationRow {
   display_name: string | null;
   atendido_por: string;
   unread_count: number;
+  contact_id: string | null;
   whatsapp_messages: DbMessageRow[];
 }
 
@@ -36,7 +37,7 @@ export function mapConversationRow(row: DbConversationRow): Conversa {
 
   return {
     id: row.id,
-    contatoId: "",
+    contatoId: row.contact_id ?? "",
     nome: row.display_name || row.phone_number,
     telefone: row.phone_number,
     ultimaHora: mensagens[mensagens.length - 1]?.hora ?? "",

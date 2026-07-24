@@ -14,6 +14,7 @@ export type Origem =
   | "anuncio"
   | "evento"
   | "outbound"
+  | "whatsapp"
   | "outro";
 
 export interface Contato {
@@ -112,6 +113,7 @@ export const ORIGEM_LABEL: Record<Origem, string> = {
   anuncio: "Anúncio",
   evento: "Evento",
   outbound: "Outbound",
+  whatsapp: "WhatsApp",
   outro: "Outro",
 };
 
