@@ -11,6 +11,9 @@ export async function PATCH(
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof body.unreadCount === "number") update.unread_count = body.unreadCount;
   if (typeof body.atendidoPor === "string") update.atendido_por = body.atendidoPor;
+  if (typeof body.contatoId === "string" && body.contatoId) {
+    update.contact_id = body.contatoId;
+  }
 
   const supabase = createSupabaseServerClient();
   const { error } = await supabase

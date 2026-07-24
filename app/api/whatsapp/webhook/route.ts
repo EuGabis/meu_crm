@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { refreshInstanceFromEvolution, setInstanceStatus } from "@/lib/whatsapp/instance-store";
+import { resolveOrCreateContact } from "@/lib/whatsapp/contact-link";
 
 interface EvolutionWebhookBody {
   event: string;
@@ -99,6 +100,19 @@ async function handleMessagesUpsert(data: Record<string, unknown>) {
       .from("whatsapp_conversations")
       .update({ unread_count: (conversation.unread_count ?? 0) + 1 })
       .eq("id", conversation.id);
+  }
+
+  if (!conversation.contact_id) {
+    try {
+      const contactId = await resolveOrCreateContact(supabase, phoneNumber, pushName);
+      await supabase
+        .from("whatsapp_conversations")
+        .update({ contact_id: contactId })
+        .eq("id", conversation.id);
+    } catch (error) {
+      console.error("[whatsapp/webhook] vínculo de contato falhou", error);
+      // não bloqueia a gravação da mensagem
+    }
   }
 
   const { error: msgError } = await supabase.from("whatsapp_messages").upsert(
