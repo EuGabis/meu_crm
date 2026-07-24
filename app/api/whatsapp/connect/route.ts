@@ -3,6 +3,11 @@ import { connectInstance, setWebhook } from "@/lib/evolution/client";
 
 function getAppBaseUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  // Em produção, usa o domínio estável do projeto — não muda a cada deploy,
+  // ao contrário de VERCEL_URL (que é específico do deployment atual).
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
