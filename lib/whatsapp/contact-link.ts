@@ -7,11 +7,25 @@ function apenasDigitos(s: string): string {
   return s.replace(/\D/g, "");
 }
 
-function telefonesBatem(a: string, b: string): boolean {
+export function telefonesBatem(a: string, b: string): boolean {
   const da = apenasDigitos(a);
   const db = apenasDigitos(b);
   if (da.length < MIN_DIGITOS || db.length < MIN_DIGITOS) return false;
   return da.endsWith(db) || db.endsWith(da);
+}
+
+/**
+ * Converte um telefone cadastrado em remote_jid do WhatsApp.
+ * Assume números brasileiros: 10-11 dígitos ganham o prefixo 55.
+ * Retorna null quando o telefone não se encaixa em nenhum padrão.
+ */
+export function normalizarParaJid(telefone: string): string | null {
+  const d = apenasDigitos(telefone);
+  if (d.length === 10 || d.length === 11) return `55${d}@s.whatsapp.net`;
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) {
+    return `${d}@s.whatsapp.net`;
+  }
+  return null;
 }
 
 /**

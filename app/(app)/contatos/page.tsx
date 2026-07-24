@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, MoreHorizontal } from "lucide-react";
 
 import { Topbar } from "@/components/app/topbar";
@@ -53,6 +54,7 @@ const STATUS_BADGE: Record<
 };
 
 export default function ContatosPage() {
+  const router = useRouter();
   const [contatos, setContatos] = useState<Contato[]>([]);
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState<ContatoStatus | "todos">("todos");
@@ -102,6 +104,21 @@ export default function ContatosPage() {
     const res = await fetch(`/api/contatos/${contato.id}`, { method: "DELETE" });
     if (!res.ok) return;
     setContatos((prev) => prev.filter((c) => c.id !== contato.id));
+  }
+
+  async function enviarMensagem(contato: Contato) {
+    const res = await fetch("/api/whatsapp/conversas/iniciar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contatoId: contato.id }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: null }));
+      window.alert(error ?? "Não foi possível iniciar a conversa.");
+      return;
+    }
+    const { conversaId } = await res.json();
+    router.push(`/inbox?conversa=${conversaId}`);
   }
 
   return (
@@ -206,6 +223,9 @@ export default function ContatosPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem disabled>Ver detalhes</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => enviarMensagem(c)}>
+                          Enviar mensagem
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setEditando(c)}>
                           Editar
                         </DropdownMenuItem>

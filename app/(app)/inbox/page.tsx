@@ -27,7 +27,21 @@ export default function InboxPage() {
         conversas: Conversa[];
       };
       setConversas(novas);
-      setSelId((atual) => atual ?? novas[0]?.id ?? null);
+      // ?conversa=<id> permite abrir o Inbox já com uma conversa selecionada
+      // (ex: vindo do "Enviar mensagem" na tela de Contatos).
+      const desejada = new URLSearchParams(window.location.search).get("conversa");
+      setSelId(
+        (atual) =>
+          atual ??
+          (desejada && novas.some((c) => c.id === desejada) ? desejada : null) ??
+          novas[0]?.id ??
+          null
+      );
+      if (desejada) {
+        setMobileView("thread");
+        // Limpa o parâmetro para o polling não reaplicar a seleção.
+        window.history.replaceState(null, "", "/inbox");
+      }
     }
     if (resContatos.ok) {
       const { contatos: lista } = await resContatos.json();
