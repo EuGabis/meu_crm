@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NovoContatoDialog } from "@/components/app/contatos/novo-contato-dialog";
+import { EditarContatoDialog } from "@/components/app/contatos/editar-contato-dialog";
 import {
   CONTATO_STATUS_LABEL,
   ORIGEM_LABEL,
@@ -54,6 +55,7 @@ export default function ContatosPage() {
   const [contatos, setContatos] = useState<Contato[]>([]);
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState<ContatoStatus | "todos">("todos");
+  const [editando, setEditando] = useState<Contato | null>(null);
 
   useEffect(() => {
     fetch("/api/contatos", { cache: "no-store" })
@@ -76,6 +78,28 @@ export default function ContatosPage() {
 
   function aoCriar(contato: Contato) {
     setContatos((prev) => [...prev, contato]);
+  }
+
+  function aoSalvarEdicao(contato: Contato) {
+    setContatos((prev) => prev.map((c) => (c.id === contato.id ? contato : c)));
+  }
+
+  async function arquivar(contato: Contato) {
+    const res = await fetch(`/api/contatos/${contato.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "inativo" }),
+    });
+    if (!res.ok) return;
+    const { contato: atualizado } = await res.json();
+    setContatos((prev) => prev.map((c) => (c.id === atualizado.id ? atualizado : c)));
+  }
+
+  async function excluir(contato: Contato) {
+    if (!window.confirm(`Excluir ${contato.nome} permanentemente?`)) return;
+    const res = await fetch(`/api/contatos/${contato.id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    setContatos((prev) => prev.filter((c) => c.id !== contato.id));
   }
 
   return (
@@ -180,11 +204,18 @@ export default function ContatosPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem disabled>Ver detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEditando(c)}>
+                          Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem disabled>Criar negócio</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Arquivar</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => arquivar(c)}>
+                          Arquivar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => excluir(c)}
+                        >
                           Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -205,6 +236,14 @@ export default function ContatosPage() {
           ) : null}
         </div>
       </div>
+
+      <EditarContatoDialog
+        contato={editando}
+        onOpenChange={(open) => {
+          if (!open) setEditando(null);
+        }}
+        onSalvo={aoSalvarEdicao}
+      />
     </>
   );
 }
