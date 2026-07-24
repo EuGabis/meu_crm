@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MessageCircle,
   Calendar,
@@ -13,6 +13,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { WhatsappConnectDialog } from "@/components/app/configuracoes/whatsapp-connect-dialog";
 import { INTEGRACOES } from "@/lib/config-data";
 import {
   INTEGRACAO_STATUS_LABEL,
@@ -34,10 +35,52 @@ const STATUS_VARIANT: Record<IntegracaoStatus, "won" | "lost" | "default"> = {
   desconectado: "default",
 };
 
+const WHATSAPP_ID = "int-whatsapp";
+
 export default function IntegracoesPage() {
   const [itens, setItens] = useState<Integracao[]>(INTEGRACOES);
+  const [dialogAberto, setDialogAberto] = useState(false);
+  const [carregandoStatus, setCarregandoStatus] = useState(true);
+
+  useEffect(() => {
+    let ativo = true;
+    fetch("/api/whatsapp/status", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!ativo || !data) return;
+        aplicarStatusWhatsapp(data.status === "open" ? "conectado" : "desconectado");
+      })
+      .catch(() => {
+        if (ativo) aplicarStatusWhatsapp("erro");
+      })
+      .finally(() => {
+        if (ativo) setCarregandoStatus(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  function aplicarStatusWhatsapp(status: IntegracaoStatus) {
+    setItens((prev) => prev.map((i) => (i.id === WHATSAPP_ID ? { ...i, status } : i)));
+  }
+
+  async function desconectarWhatsapp() {
+    const res = await fetch("/api/whatsapp/disconnect", { method: "POST" });
+    if (res.ok) aplicarStatusWhatsapp("desconectado");
+  }
 
   function alternar(id: string) {
+    if (id === WHATSAPP_ID) {
+      const atual = itens.find((i) => i.id === WHATSAPP_ID);
+      if (atual?.status === "conectado") {
+        desconectarWhatsapp();
+      } else {
+        setDialogAberto(true);
+      }
+      return;
+    }
+
     setItens((prev) =>
       prev.map((i) =>
         i.id === id
@@ -66,6 +109,7 @@ export default function IntegracoesPage() {
         {itens.map((i) => {
           const Icon = ICONES[i.id] ?? MessageCircle;
           const conectado = i.status === "conectado";
+          const carregando = i.id === WHATSAPP_ID && carregandoStatus;
           return (
             <div
               key={i.id}
@@ -122,6 +166,7 @@ export default function IntegracoesPage() {
                 <Button
                   variant={conectado ? "outline" : "brand"}
                   size="sm"
+                  disabled={carregando}
                   onClick={() => alternar(i.id)}
                   className={cn(conectado && "text-muted-foreground")}
                 >
@@ -132,6 +177,12 @@ export default function IntegracoesPage() {
           );
         })}
       </div>
+
+      <WhatsappConnectDialog
+        open={dialogAberto}
+        onOpenChange={setDialogAberto}
+        onConectado={() => aplicarStatusWhatsapp("conectado")}
+      />
     </div>
   );
 }
