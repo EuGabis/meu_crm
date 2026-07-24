@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
+import { EditarNegocioDialog } from "@/components/app/negocios/editar-negocio-dialog";
 import {
   STAGES,
   type Contato,
@@ -36,6 +37,7 @@ export default function PipelinePage() {
   const [negocios, setNegocios] = useState<Negocio[]>([]);
   const [contatos, setContatos] = useState<Contato[]>([]);
   const [novoAberto, setNovoAberto] = useState(false);
+  const [editando, setEditando] = useState<Negocio | null>(null);
 
   useEffect(() => {
     fetch("/api/negocios", { cache: "no-store" })
@@ -61,6 +63,17 @@ export default function PipelinePage() {
 
   function aoCriar(negocio: Negocio) {
     setNegocios((prev) => [...prev, negocio]);
+  }
+
+  function aoSalvarEdicao(negocio: Negocio) {
+    setNegocios((prev) => prev.map((n) => (n.id === negocio.id ? negocio : n)));
+  }
+
+  async function excluir(negocio: Negocio) {
+    if (!window.confirm(`Excluir "${negocio.titulo}" permanentemente?`)) return;
+    const res = await fetch(`/api/negocios/${negocio.id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    setNegocios((prev) => prev.filter((n) => n.id !== negocio.id));
   }
 
   const totalAberto = negocios
@@ -146,6 +159,16 @@ export default function PipelinePage() {
                                   </DropdownMenuItem>
                                 )
                               )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setEditando(n)}>
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => excluir(n)}
+                              >
+                                Excluir
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -194,6 +217,14 @@ export default function PipelinePage() {
         onOpenChange={setNovoAberto}
         contatos={contatos}
         onCriado={aoCriar}
+      />
+
+      <EditarNegocioDialog
+        negocio={editando}
+        onOpenChange={(open) => {
+          if (!open) setEditando(null);
+        }}
+        onSalvo={aoSalvarEdicao}
       />
     </>
   );

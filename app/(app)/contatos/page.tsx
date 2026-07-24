@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NovoContatoDialog } from "@/components/app/contatos/novo-contato-dialog";
 import { EditarContatoDialog } from "@/components/app/contatos/editar-contato-dialog";
+import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
 import {
   CONTATO_STATUS_LABEL,
   ORIGEM_LABEL,
@@ -56,6 +57,7 @@ export default function ContatosPage() {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState<ContatoStatus | "todos">("todos");
   const [editando, setEditando] = useState<Contato | null>(null);
+  const [negocioContato, setNegocioContato] = useState<Contato | null>(null);
 
   useEffect(() => {
     fetch("/api/contatos", { cache: "no-store" })
@@ -207,7 +209,9 @@ export default function ContatosPage() {
                         <DropdownMenuItem onClick={() => setEditando(c)}>
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem disabled>Criar negócio</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setNegocioContato(c)}>
+                          Criar negócio
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => arquivar(c)}>
                           Arquivar
@@ -243,6 +247,16 @@ export default function ContatosPage() {
           if (!open) setEditando(null);
         }}
         onSalvo={aoSalvarEdicao}
+      />
+
+      <NovoNegocioDialog
+        open={negocioContato !== null}
+        onOpenChange={(open) => {
+          if (!open) setNegocioContato(null);
+        }}
+        contatos={contatos}
+        contatoFixo={negocioContato ?? undefined}
+        onCriado={() => {}}
       />
     </>
   );
