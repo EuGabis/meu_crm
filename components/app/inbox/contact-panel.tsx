@@ -1,49 +1,80 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Mail, Phone, Building2, ExternalLink, Plus, CalendarPlus } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  Building2,
+  ExternalLink,
+  Plus,
+  CalendarPlus,
+  ArrowLeftRight,
+} from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getContato, NEGOCIOS } from "@/lib/mock-data";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
 import {
   CONTATO_STATUS_LABEL,
   STAGES,
+  type Contato,
   type Conversa,
+  type Negocio,
 } from "@/lib/types";
 import { cn, formatBRL, initials } from "@/lib/utils";
 
 export function ContactPanel({
   conversa,
+  contatos,
+  negocios,
+  onTrocarContato,
+  onNegocioCriado,
   className,
 }: {
   conversa: Conversa;
+  contatos: Contato[];
+  negocios: Negocio[];
+  onTrocarContato: (contatoId: string) => void;
+  onNegocioCriado: (negocio: Negocio) => void;
   className?: string;
 }) {
-  const contato = getContato(conversa.contatoId);
-  const negocios = NEGOCIOS.filter((n) => n.contatoId === conversa.contatoId);
+  const [negocioAberto, setNegocioAberto] = useState(false);
+  const [trocando, setTrocando] = useState(false);
+
+  const contato = conversa.contatoId
+    ? contatos.find((c) => c.id === conversa.contatoId)
+    : undefined;
+  const negociosDoContato = contato
+    ? negocios.filter((n) => n.contatoId === contato.id)
+    : [];
 
   return (
     <aside className={cn("flex min-h-0 flex-col overflow-y-auto bg-surface", className)}>
       <div className="flex flex-col items-center gap-2 border-b border-border p-5 text-center">
         <Avatar className="size-16 text-lg">
-          <AvatarFallback>{initials(conversa.nome)}</AvatarFallback>
+          <AvatarFallback>{initials(contato?.nome ?? conversa.nome)}</AvatarFallback>
         </Avatar>
         <div>
           <p className="font-display font-semibold tracking-tight">
-            {conversa.nome}
+            {contato?.nome ?? conversa.nome}
           </p>
-          {contato ? (
+          {contato && (contato.cargo || contato.empresa) ? (
             <p className="text-xs text-muted-foreground">
-              {contato.cargo} · {contato.empresa}
+              {[contato.cargo, contato.empresa].filter(Boolean).join(" · ")}
             </p>
           ) : null}
         </div>
         {contato ? (
-          <Badge variant="outline">
-            {CONTATO_STATUS_LABEL[contato.status]}
-          </Badge>
+          <Badge variant="outline">{CONTATO_STATUS_LABEL[contato.status]}</Badge>
         ) : null}
       </div>
 
@@ -53,24 +84,21 @@ export function ContactPanel({
           Dados
         </p>
         <InfoRow icon={<Phone className="size-4" />} texto={conversa.telefone} />
-        {contato ? (
-          <>
-            <InfoRow icon={<Mail className="size-4" />} texto={contato.email} />
-            <InfoRow
-              icon={<Building2 className="size-4" />}
-              texto={contato.empresa}
-            />
-          </>
+        {contato?.email ? (
+          <InfoRow icon={<Mail className="size-4" />} texto={contato.email} />
+        ) : null}
+        {contato?.empresa ? (
+          <InfoRow icon={<Building2 className="size-4" />} texto={contato.empresa} />
         ) : null}
       </div>
 
       {/* Negócios */}
       <div className="space-y-2.5 border-b border-border p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Negócios ({negocios.length})
+          Negócios ({negociosDoContato.length})
         </p>
-        {negocios.length > 0 ? (
-          negocios.map((n) => {
+        {negociosDoContato.length > 0 ? (
+          negociosDoContato.map((n) => {
             const stage = STAGES.find((s) => s.id === n.stage)!;
             return (
               <div
@@ -90,9 +118,7 @@ export function ContactPanel({
             );
           })
         ) : (
-          <p className="text-xs text-muted-foreground">
-            Nenhum negócio vinculado.
-          </p>
+          <p className="text-xs text-muted-foreground">Nenhum negócio vinculado.</p>
         )}
       </div>
 
@@ -106,15 +132,59 @@ export function ContactPanel({
             </Link>
           </Button>
         ) : null}
-        <Button variant="outline" className="w-full justify-start gap-2">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          disabled={!contato}
+          onClick={() => setNegocioAberto(true)}
+        >
           <Plus className="size-4" />
           Criar negócio
         </Button>
-        <Button variant="outline" className="w-full justify-start gap-2">
+        <Button variant="outline" className="w-full justify-start gap-2" disabled>
           <CalendarPlus className="size-4" />
           Agendar reunião
         </Button>
+
+        {trocando ? (
+          <Select
+            value={contato?.id ?? ""}
+            onValueChange={(v) => {
+              onTrocarContato(v);
+              setTrocando(false);
+            }}
+          >
+            <SelectTrigger aria-label="Escolher contato">
+              <SelectValue placeholder="Escolha um contato" />
+            </SelectTrigger>
+            <SelectContent>
+              {contatos.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nome} — {c.telefone}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <button
+            onClick={() => setTrocando(true)}
+            className="flex w-full items-center gap-1.5 px-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeftRight className="size-3" />
+            Trocar contato vinculado
+          </button>
+        )}
       </div>
+
+      {contato ? (
+        <NovoNegocioDialog
+          open={negocioAberto}
+          onOpenChange={setNegocioAberto}
+          contatos={contatos}
+          contatoFixo={contato}
+          onCriado={onNegocioCriado}
+        />
+      ) : null}
     </aside>
   );
 }

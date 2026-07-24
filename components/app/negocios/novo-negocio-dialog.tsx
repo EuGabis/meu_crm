@@ -44,17 +44,22 @@ export function NovoNegocioDialog({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Depende do id (não do objeto) — o objeto muda de referência a cada
+  // polling da página, o que resetaria o formulário no meio da digitação.
+  const contatoFixoId = contatoFixo?.id ?? "";
+  const contatoFixoEmpresa = contatoFixo?.empresa ?? "";
+
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reseta o formulário toda vez que o diálogo abre
       setTitulo("");
-      setContatoId(contatoFixo?.id ?? "");
-      setEmpresa(contatoFixo?.empresa ?? "");
+      setContatoId(contatoFixoId);
+      setEmpresa(contatoFixoEmpresa);
       setValor("");
       setFechamentoPrevisto("");
       setErro(null);
     }
-  }, [open, contatoFixo]);
+  }, [open, contatoFixoId, contatoFixoEmpresa]);
 
   function selecionarContato(id: string) {
     setContatoId(id);

@@ -6,20 +6,37 @@ import { Topbar } from "@/components/app/topbar";
 import { ConversationList } from "@/components/app/inbox/conversation-list";
 import { MessageThread } from "@/components/app/inbox/message-thread";
 import { ContactPanel } from "@/components/app/inbox/contact-panel";
-import type { Conversa } from "@/lib/types";
+import type { Contato, Conversa, Negocio } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function InboxPage() {
   const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [contatos, setContatos] = useState<Contato[]>([]);
+  const [negocios, setNegocios] = useState<Negocio[]>([]);
   const [selId, setSelId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"lista" | "thread">("lista");
 
   const carregar = useCallback(async () => {
-    const res = await fetch("/api/whatsapp/conversas", { cache: "no-store" });
-    if (!res.ok) return;
-    const { conversas: novas } = (await res.json()) as { conversas: Conversa[] };
-    setConversas(novas);
-    setSelId((atual) => atual ?? novas[0]?.id ?? null);
+    const [resConversas, resContatos, resNegocios] = await Promise.all([
+      fetch("/api/whatsapp/conversas", { cache: "no-store" }),
+      fetch("/api/contatos", { cache: "no-store" }),
+      fetch("/api/negocios", { cache: "no-store" }),
+    ]);
+    if (resConversas.ok) {
+      const { conversas: novas } = (await resConversas.json()) as {
+        conversas: Conversa[];
+      };
+      setConversas(novas);
+      setSelId((atual) => atual ?? novas[0]?.id ?? null);
+    }
+    if (resContatos.ok) {
+      const { contatos: lista } = await resContatos.json();
+      setContatos(lista ?? []);
+    }
+    if (resNegocios.ok) {
+      const { negocios: lista } = await resNegocios.json();
+      setNegocios(lista ?? []);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,6 +99,22 @@ export default function InboxPage() {
     });
   }
 
+  async function trocarContato(contatoId: string) {
+    if (!selId) return;
+    setConversas((prev) =>
+      prev.map((c) => (c.id === selId ? { ...c, contatoId } : c))
+    );
+    await fetch(`/api/whatsapp/conversas/${selId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contatoId }),
+    });
+  }
+
+  function aoNegocioCriado(negocio: Negocio) {
+    setNegocios((prev) => [...prev, negocio]);
+  }
+
   if (!sel) {
     return (
       <div className="flex h-full flex-col overflow-hidden">
@@ -122,6 +155,10 @@ export default function InboxPage() {
 
         <ContactPanel
           conversa={sel}
+          contatos={contatos}
+          negocios={negocios}
+          onTrocarContato={trocarContato}
+          onNegocioCriado={aoNegocioCriado}
           className="hidden w-80 shrink-0 border-l border-border xl:flex"
         />
       </div>
