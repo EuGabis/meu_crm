@@ -6,6 +6,15 @@
 
 import type { EventoTipo } from "@/lib/agenda-data";
 
+export interface UsuarioAcesso {
+  id: string;
+  nome: string;
+  email: string;
+  confirmado: boolean;
+  criadoEm: string; // ISO
+  ultimoAcesso: string | null; // ISO
+}
+
 export type ContatoStatus = "lead" | "ativo" | "cliente" | "inativo";
 
 export type Origem =

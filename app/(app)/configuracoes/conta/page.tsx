@@ -22,10 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { USUARIO_ATUAL } from "@/lib/mock-data";
+import { useUsuario } from "@/components/app/user-context";
 import { initials } from "@/lib/utils";
 
 export default function ContaPage() {
+  const usuario = useUsuario();
   const [twoFA, setTwoFA] = useState(false);
 
   return (
@@ -50,7 +51,7 @@ export default function ContaPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar className="size-14 text-base">
-                <AvatarFallback>{initials(USUARIO_ATUAL.nome)}</AvatarFallback>
+                <AvatarFallback>{initials(usuario.nome)}</AvatarFallback>
               </Avatar>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm">
@@ -70,15 +71,15 @@ export default function ContaPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="nome">Nome</Label>
-                <Input id="nome" defaultValue={USUARIO_ATUAL.nome} />
+                <Input id="nome" defaultValue={usuario.nome} />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" defaultValue={USUARIO_ATUAL.email} />
+                <Input id="email" type="email" defaultValue={usuario.email} />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="cargo">Cargo</Label>
-                <Input id="cargo" defaultValue={USUARIO_ATUAL.cargo} />
+                <Input id="cargo" placeholder="Seu cargo" />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="empresa">Empresa</Label>

@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { USUARIO_ATUAL } from "@/lib/mock-data";
+import { useUsuario } from "@/components/app/user-context";
 import { initials } from "@/lib/utils";
 
 interface TopbarProps {
@@ -27,6 +27,7 @@ interface TopbarProps {
 
 export function Topbar({ title, description }: TopbarProps) {
   const { collapsed, toggle } = useSidebar();
+  const usuario = useUsuario();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border-strong bg-surface/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-surface/80 md:gap-4 md:px-6">
@@ -82,7 +83,7 @@ export function Topbar({ title, description }: TopbarProps) {
             aria-label="Menu do usuário"
           >
             <Avatar>
-              <AvatarFallback>{initials(USUARIO_ATUAL.nome)}</AvatarFallback>
+              <AvatarFallback>{initials(usuario.nome)}</AvatarFallback>
             </Avatar>
           </button>
         </DropdownMenuTrigger>
@@ -90,18 +91,21 @@ export function Topbar({ title, description }: TopbarProps) {
           <DropdownMenuLabel>
             <div className="normal-case">
               <p className="text-sm font-medium text-foreground">
-                {USUARIO_ATUAL.nome}
+                {usuario.nome}
               </p>
               <p className="text-xs font-normal tracking-normal text-muted-foreground">
-                {USUARIO_ATUAL.email}
+                {usuario.email}
               </p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Perfil</DropdownMenuItem>
-          <DropdownMenuItem>Configurações</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Sair</DropdownMenuItem>
+          <form action="/auth/signout" method="post">
+            <DropdownMenuItem asChild>
+              <button type="submit" className="w-full cursor-default">
+                Sair
+              </button>
+            </DropdownMenuItem>
+          </form>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

@@ -1,18 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { UserPlus, MoreHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MoreHorizontal, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -22,30 +16,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EQUIPE } from "@/lib/config-data";
-import { PAPEL_LABEL, type Membro, type PapelEquipe } from "@/lib/types";
+import { NovoUsuarioDialog } from "@/components/app/equipe/novo-usuario-dialog";
+import type { UsuarioAcesso } from "@/lib/types";
 import { formatDate, initials } from "@/lib/utils";
 
 export default function EquipePage() {
-  const [membros, setMembros] = useState<Membro[]>(EQUIPE);
+  const [usuarios, setUsuarios] = useState<UsuarioAcesso[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
-  function mudarPapel(id: string, papel: PapelEquipe) {
-    setMembros((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, papel } : m))
+  useEffect(() => {
+    fetch("/api/usuarios", { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(({ usuarios: lista }) => setUsuarios(lista ?? []))
+      .catch(() => setErro("Não foi possível carregar os usuários."))
+      .finally(() => setCarregando(false));
+  }, []);
+
+  function aoCriar(usuario: UsuarioAcesso) {
+    setUsuarios((prev) =>
+      [...prev, usuario].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     );
+  }
+
+  async function remover(usuario: UsuarioAcesso) {
+    if (!window.confirm(`Remover o acesso de ${usuario.nome}?`)) return;
+    const res = await fetch(`/api/usuarios/${usuario.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: null }));
+      window.alert(error ?? "Não foi possível remover o acesso.");
+      return;
+    }
+    setUsuarios((prev) => prev.filter((u) => u.id !== usuario.id));
   }
 
   return (
@@ -53,69 +63,53 @@ export default function EquipePage() {
       <div className="flex items-end justify-between gap-4">
         <header>
           <h2 className="font-display text-lg font-semibold tracking-tight">
-            Equipe & permissões
+            Equipe & acessos
           </h2>
           <p className="text-sm text-muted-foreground">
-            {membros.length} membros · gerencie acessos e papéis.
+            {usuarios.length} {usuarios.length === 1 ? "usuário" : "usuários"} com
+            acesso ao CRM.
           </p>
         </header>
-        <Button variant="brand" className="gap-1.5">
-          <UserPlus className="size-4" />
-          Convidar
-        </Button>
+        <NovoUsuarioDialog onCriado={aoCriar} />
       </div>
 
       <Card className="overflow-hidden p-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Membro</TableHead>
-              <TableHead>Papel</TableHead>
+              <TableHead>Usuário</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Criado em</TableHead>
               <TableHead>Último acesso</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {membros.map((m) => (
-              <TableRow key={m.id}>
+            {usuarios.map((u) => (
+              <TableRow key={u.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarFallback>{initials(m.nome)}</AvatarFallback>
+                      <AvatarFallback>{initials(u.nome)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{m.nome}</p>
+                      <p className="truncate font-medium">{u.nome}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {m.email}
+                        {u.email}
                       </p>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Select
-                    value={m.papel}
-                    onValueChange={(v) => mudarPapel(m.id, v as PapelEquipe)}
-                  >
-                    <SelectTrigger className="h-8 w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(PAPEL_LABEL) as PapelEquipe[]).map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {PAPEL_LABEL[p]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={m.status === "ativo" ? "won" : "open"}>
-                    {m.status === "ativo" ? "Ativo" : "Convite pendente"}
+                  <Badge variant={u.confirmado ? "won" : "open"}>
+                    {u.confirmado ? "Ativo" : "Pendente"}
                   </Badge>
                 </TableCell>
                 <TableCell className="tabular text-muted-foreground">
-                  {m.ultimoAcesso === "—" ? "—" : formatDate(m.ultimoAcesso)}
+                  {formatDate(u.criadoEm)}
+                </TableCell>
+                <TableCell className="tabular text-muted-foreground">
+                  {u.ultimoAcesso ? formatDate(u.ultimoAcesso) : "—"}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -125,11 +119,11 @@ export default function EquipePage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Reenviar convite</DropdownMenuItem>
-                      <DropdownMenuItem>Editar acesso</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
-                        Remover da equipe
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => remover(u)}
+                      >
+                        Remover acesso
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -138,40 +132,35 @@ export default function EquipePage() {
             ))}
           </TableBody>
         </Table>
+
+        {carregando ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            Carregando…
+          </div>
+        ) : null}
+        {!carregando && erro ? (
+          <div className="p-8 text-center text-sm text-destructive">{erro}</div>
+        ) : null}
+        {!carregando && !erro && usuarios.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            Nenhum usuário ainda. Crie o primeiro acesso.
+          </div>
+        ) : null}
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>O que cada papel pode fazer</CardTitle>
-          <CardDescription>
-            Permissões aplicadas em todo o CRM.
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="size-4 text-brand" />
+            Permissões
+          </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
-          {[
-            {
-              papel: "Administrador",
-              desc: "Acesso total, incluindo configurações, integrações e faturamento.",
-            },
-            {
-              papel: "Gestor",
-              desc: "Vê tudo do comercial, gerencia pipeline e relatórios da equipe.",
-            },
-            {
-              papel: "Vendedor",
-              desc: "Gerencia os próprios contatos, negócios e conversas.",
-            },
-          ].map((r) => (
-            <div
-              key={r.papel}
-              className="rounded-md border border-border bg-elevated p-3"
-            >
-              <p className="text-sm font-medium">{r.papel}</p>
-              <p className="mt-1 text-xs leading-snug text-muted-foreground">
-                {r.desc}
-              </p>
-            </div>
-          ))}
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Nesta versão, todo usuário com acesso enxerga o CRM inteiro. Papéis
+            (administrador, gestor, vendedor) com permissões separadas entram numa
+            próxima etapa.
+          </p>
         </CardContent>
       </Card>
     </div>
