@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { mapContatoRow, type DbContatoRow } from "@/lib/contatos/mapper";
+import {
+  erroObservacoesAusente,
+  mapContatoRow,
+  type DbContatoRow,
+} from "@/lib/contatos/mapper";
 
 export async function GET() {
   const supabase = createSupabaseServerClient();
@@ -27,20 +31,33 @@ export async function POST(req: NextRequest) {
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const telefone = typeof body.telefone === "string" ? body.telefone.trim() : "";
   const empresa = typeof body.empresa === "string" ? body.empresa.trim() : "";
+  const cargo = typeof body.cargo === "string" ? body.cargo.trim() : "";
+  const observacoes =
+    typeof body.observacoes === "string" ? body.observacoes.trim() : "";
 
-  if (!nome || !email || !telefone) {
+  if (!nome) {
     return NextResponse.json(
-      { error: "Nome, e-mail e telefone são obrigatórios." },
+      { error: "O nome do contato é obrigatório." },
       { status: 400 }
     );
   }
 
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
+  const base = { nome, email, telefone, empresa, cargo };
+  let { data, error } = await supabase
     .from("contacts")
-    .insert({ nome, email, telefone, empresa })
+    .insert({ ...base, observacoes })
     .select()
     .single();
+
+  // Compatível com o banco antes da migração de `observacoes`.
+  if (erroObservacoesAusente(error)) {
+    ({ data, error } = await supabase
+      .from("contacts")
+      .insert(base)
+      .select()
+      .single());
+  }
 
   if (error) {
     console.error("[contatos/post]", error);

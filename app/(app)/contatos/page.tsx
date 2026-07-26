@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NovoContatoDialog } from "@/components/app/contatos/novo-contato-dialog";
+import { ImportarContatosDialog } from "@/components/app/contatos/importar-contatos-dialog";
 import { EditarContatoDialog } from "@/components/app/contatos/editar-contato-dialog";
 import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
 import {
@@ -84,6 +85,10 @@ export default function ContatosPage() {
     setContatos((prev) => [...prev, contato]);
   }
 
+  function aoImportar(novos: Contato[]) {
+    setContatos((prev) => [...novos, ...prev]);
+  }
+
   function aoSalvarEdicao(contato: Contato) {
     setContatos((prev) => prev.map((c) => (c.id === contato.id ? contato : c)));
   }
@@ -140,7 +145,10 @@ export default function ContatosPage() {
               className="pl-8"
             />
           </label>
-          <NovoContatoDialog onCriado={aoCriar} />
+          <div className="flex items-center gap-2">
+            <ImportarContatosDialog onImportado={aoImportar} />
+            <NovoContatoDialog onCriado={aoCriar} />
+          </div>
         </div>
 
         {/* Filtros por status */}

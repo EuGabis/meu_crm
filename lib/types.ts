@@ -27,6 +27,7 @@ export interface Contato {
   status: ContatoStatus;
   origem: Origem;
   valorEstimado: number;
+  observacoes: string;
   criadoEm: string; // ISO
   ultimoContato: string; // ISO
   ownerId: string;

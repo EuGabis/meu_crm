@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -30,6 +31,7 @@ export function EditarContatoDialog({
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cargo, setCargo] = useState("");
+  const [observacoes, setObservacoes] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -41,6 +43,7 @@ export function EditarContatoDialog({
       setEmail(contato.email);
       setTelefone(contato.telefone);
       setCargo(contato.cargo);
+      setObservacoes(contato.observacoes ?? "");
       setErro(null);
     }
   }, [contato]);
@@ -54,7 +57,7 @@ export function EditarContatoDialog({
       const res = await fetch(`/api/contatos/${contato.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, empresa, email, telefone, cargo }),
+        body: JSON.stringify({ nome, empresa, email, telefone, cargo, observacoes }),
       });
       if (!res.ok) throw new Error();
       const { contato: atualizado } = await res.json();
@@ -98,13 +101,12 @@ export function EditarContatoDialog({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="edit-email">E-mail</Label>
+              <Label htmlFor="edit-email">E-mail (opcional)</Label>
               <Input
                 id="edit-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
               />
             </div>
             <div className="grid gap-1.5">
@@ -123,6 +125,15 @@ export function EditarContatoDialog({
               id="edit-cargo"
               value={cargo}
               onChange={(e) => setCargo(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="edit-observacoes">Observações</Label>
+            <Textarea
+              id="edit-observacoes"
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              rows={4}
             />
           </div>
           {erro ? <p className="text-sm text-destructive">{erro}</p> : null}

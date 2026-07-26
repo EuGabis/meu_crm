@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { mapContatoRow, type DbContatoRow } from "@/lib/contatos/mapper";
+import {
+  erroObservacoesAusente,
+  mapContatoRow,
+  type DbContatoRow,
+} from "@/lib/contatos/mapper";
 
-const CAMPOS_TEXTO = ["nome", "email", "telefone", "empresa", "cargo", "status", "origem"] as const;
+const CAMPOS_TEXTO = ["nome", "email", "telefone", "empresa", "cargo", "status", "origem", "observacoes"] as const;
 
 export async function PATCH(
   req: NextRequest,
@@ -18,12 +22,24 @@ export async function PATCH(
   if (typeof body.valorEstimado === "number") update.valor_estimado = body.valorEstimado;
 
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("contacts")
     .update(update)
     .eq("id", id)
     .select()
     .single();
+
+  // Compatível com o banco antes da migração de `observacoes`.
+  if (erroObservacoesAusente(error)) {
+    const { observacoes: _omit, ...semObs } = update;
+    void _omit;
+    ({ data, error } = await supabase
+      .from("contacts")
+      .update(semObs)
+      .eq("id", id)
+      .select()
+      .single());
+  }
 
   if (error) {
     console.error("[contatos/patch]", error);
