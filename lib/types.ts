@@ -6,6 +6,11 @@
 
 import type { EventoTipo } from "@/lib/agenda-data";
 
+export interface MetaConfig {
+  alvoReceita: number;
+  alvoNegocios: number;
+}
+
 export interface UsuarioAcesso {
   id: string;
   nome: string;
