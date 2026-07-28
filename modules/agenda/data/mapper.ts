@@ -1,5 +1,5 @@
 import type { EventoAgenda } from "@/lib/types";
-import type { EventoTipo } from "@/lib/agenda-data";
+import type { EventoTipo } from "../types";
 
 export interface DbEventRow {
   id: string;

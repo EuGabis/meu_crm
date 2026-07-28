@@ -8,7 +8,7 @@ import {
   TIPO_LABEL,
   type Evento,
   type EventoTipo,
-} from "@/lib/agenda-data";
+} from "../types";
 import { cn } from "@/lib/utils";
 
 export interface DiaSemana {

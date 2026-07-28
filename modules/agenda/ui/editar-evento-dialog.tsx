@@ -21,38 +21,39 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TIPO_LABEL, type EventoTipo } from "@/lib/agenda-data";
+import { TIPO_LABEL, type EventoTipo } from "../types";
 import type { Contato, EventoAgenda } from "@/lib/types";
 
 const TIPOS: EventoTipo[] = ["reuniao", "call", "tarefa", "pessoal"];
 
+function paraData(iso: string): string {
+  return iso.slice(0, 10);
+}
+function paraHora(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 function paraDataHora(data: string, hora: string): string {
   return new Date(`${data}T${hora}:00`).toISOString();
 }
 
-function hojeISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-export function NovoEventoDialog({
-  open,
-  onOpenChange,
+export function EditarEventoDialog({
+  evento,
   contatos,
-  diaSelecionado,
-  contatoInicialId,
-  onCriado,
+  onOpenChange,
+  onSalvo,
+  onExcluido,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  evento: EventoAgenda | null;
   contatos: Contato[];
-  diaSelecionado: Date;
-  contatoInicialId?: string;
-  onCriado: (evento: EventoAgenda) => void;
+  onOpenChange: (open: boolean) => void;
+  onSalvo: (evento: EventoAgenda) => void;
+  onExcluido: (id: string) => void;
 }) {
   const [titulo, setTitulo] = useState("");
   const [data, setData] = useState("");
-  const [horaInicio, setHoraInicio] = useState("09:00");
-  const [horaFim, setHoraFim] = useState("10:00");
+  const [horaInicio, setHoraInicio] = useState("");
+  const [horaFim, setHoraFim] = useState("");
   const [tipo, setTipo] = useState<EventoTipo>("reuniao");
   const [local, setLocal] = useState("");
   const [contatoId, setContatoId] = useState("");
@@ -60,21 +61,22 @@ export function NovoEventoDialog({
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reseta o formulário toda vez que o diálogo abre
-      setTitulo("");
-      setData(hojeISO(diaSelecionado));
-      setHoraInicio("09:00");
-      setHoraFim("10:00");
-      setTipo("reuniao");
-      setLocal("");
-      setContatoId(contatoInicialId ?? "");
+    if (evento) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- preenche o formulário quando o evento selecionado muda
+      setTitulo(evento.titulo);
+      setData(paraData(evento.inicio));
+      setHoraInicio(paraHora(evento.inicio));
+      setHoraFim(paraHora(evento.fim));
+      setTipo(evento.tipo);
+      setLocal(evento.local);
+      setContatoId(evento.contatoId ?? "");
       setErro(null);
     }
-  }, [open, diaSelecionado, contatoInicialId]);
+  }, [evento]);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
+    if (!evento) return;
     const inicio = paraDataHora(data, horaInicio);
     const fim = paraDataHora(data, horaFim);
     if (new Date(fim).getTime() <= new Date(inicio).getTime()) {
@@ -84,8 +86,8 @@ export function NovoEventoDialog({
     setEnviando(true);
     setErro(null);
     try {
-      const res = await fetch("/api/eventos", {
-        method: "POST",
+      const res = await fetch(`/api/eventos/${evento.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           titulo,
@@ -93,33 +95,41 @@ export function NovoEventoDialog({
           fim,
           tipo,
           local,
-          contatoId: contatoId || undefined,
+          contatoId: contatoId || null,
         }),
       });
       if (!res.ok) throw new Error();
-      const { evento } = await res.json();
-      onCriado(evento);
+      const { evento: atualizado } = await res.json();
+      onSalvo(atualizado);
       onOpenChange(false);
     } catch {
-      setErro("Não foi possível salvar o evento. Tente novamente.");
+      setErro("Não foi possível salvar as alterações. Tente novamente.");
     } finally {
       setEnviando(false);
     }
   }
 
+  async function excluir() {
+    if (!evento) return;
+    if (!window.confirm(`Excluir "${evento.titulo}" permanentemente?`)) return;
+    const res = await fetch(`/api/eventos/${evento.id}`, { method: "DELETE" });
+    if (!res.ok) return;
+    onExcluido(evento.id);
+    onOpenChange(false);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={evento !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo evento</DialogTitle>
-          <DialogDescription>Cadastre uma reunião ou compromisso.</DialogDescription>
+          <DialogTitle>Editar evento</DialogTitle>
+          <DialogDescription>Atualize os dados de {evento?.titulo}.</DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={salvar}>
           <div className="grid gap-1.5">
-            <Label htmlFor="evento-titulo">Título</Label>
+            <Label htmlFor="edit-evento-titulo">Título</Label>
             <Input
-              id="evento-titulo"
-              placeholder="Ex: Demo com cliente"
+              id="edit-evento-titulo"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               required
@@ -127,9 +137,9 @@ export function NovoEventoDialog({
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="evento-data">Data</Label>
+              <Label htmlFor="edit-evento-data">Data</Label>
               <Input
-                id="evento-data"
+                id="edit-evento-data"
                 type="date"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
@@ -137,9 +147,9 @@ export function NovoEventoDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="evento-inicio">Início</Label>
+              <Label htmlFor="edit-evento-inicio">Início</Label>
               <Input
-                id="evento-inicio"
+                id="edit-evento-inicio"
                 type="time"
                 value={horaInicio}
                 onChange={(e) => setHoraInicio(e.target.value)}
@@ -147,9 +157,9 @@ export function NovoEventoDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="evento-fim">Fim</Label>
+              <Label htmlFor="edit-evento-fim">Fim</Label>
               <Input
-                id="evento-fim"
+                id="edit-evento-fim"
                 type="time"
                 value={horaFim}
                 onChange={(e) => setHoraFim(e.target.value)}
@@ -159,9 +169,9 @@ export function NovoEventoDialog({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="evento-tipo">Tipo</Label>
+              <Label htmlFor="edit-evento-tipo">Tipo</Label>
               <Select value={tipo} onValueChange={(v) => setTipo(v as EventoTipo)}>
-                <SelectTrigger id="evento-tipo">
+                <SelectTrigger id="edit-evento-tipo">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -174,21 +184,21 @@ export function NovoEventoDialog({
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="evento-local">Local (opcional)</Label>
+              <Label htmlFor="edit-evento-local">Local (opcional)</Label>
               <Input
-                id="evento-local"
+                id="edit-evento-local"
                 value={local}
                 onChange={(e) => setLocal(e.target.value)}
               />
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="evento-contato">Contato (opcional)</Label>
+            <Label htmlFor="edit-evento-contato">Contato (opcional)</Label>
             <Select
               value={contatoId || "none"}
               onValueChange={(v) => setContatoId(v === "none" ? "" : v)}
             >
-              <SelectTrigger id="evento-contato">
+              <SelectTrigger id="edit-evento-contato">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -203,14 +213,26 @@ export function NovoEventoDialog({
           </div>
           {erro ? <p className="text-sm text-destructive">{erro}</p> : null}
           <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancelar
+            <div className="flex w-full items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={excluir}
+              >
+                Excluir
               </Button>
-            </DialogClose>
-            <Button type="submit" variant="brand" disabled={enviando}>
-              {enviando ? "Salvando…" : "Salvar evento"}
-            </Button>
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">
+                    Cancelar
+                  </Button>
+                </DialogClose>
+                <Button type="submit" variant="brand" disabled={enviando}>
+                  {enviando ? "Salvando…" : "Salvar alterações"}
+                </Button>
+              </div>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

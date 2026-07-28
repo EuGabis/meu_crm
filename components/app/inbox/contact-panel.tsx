@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NovoNegocioDialog } from "@/components/app/negocios/novo-negocio-dialog";
-import { NovoEventoDialog } from "@/components/app/agenda/novo-evento-dialog";
+import { NovoEventoDialog } from "@/modules/agenda";
 import {
   CONTATO_STATUS_LABEL,
   STAGES,
