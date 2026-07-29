@@ -220,6 +220,8 @@ export const PAPEL_LABEL: Record<PapelEquipe, string> = {
 
 export type MsgAutor = "cliente" | "atendente" | "agente";
 
+export type MsgTipo = "texto" | "imagem" | "audio";
+
 export interface Mensagem {
   id: string;
   autor: MsgAutor;
@@ -227,6 +229,9 @@ export interface Mensagem {
   hora: string; // "14:32"
   dataISO?: string; // timestamp completo, para separadores de data
   falhou?: boolean; // envio recusado pela Evolution API
+  tipo?: MsgTipo; // default "texto"
+  mediaUrl?: string; // URL servida por /api/whatsapp/media (mídia)
+  mimeType?: string;
 }
 
 export type AtendidoPor = "humano" | "agente" | "aguardando";

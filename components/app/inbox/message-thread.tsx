@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   ArrowLeft,
   Bot,
@@ -8,6 +8,8 @@ import {
   MoreVertical,
   Paperclip,
   SendHorizontal,
+  Mic,
+  X,
   CheckCircle2,
   RotateCcw,
   AlertCircle,
@@ -34,9 +36,34 @@ function labelDoDia(iso: string): string {
   return d.toLocaleDateString("pt-BR");
 }
 
+function melhorMimeAudio(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  const candidatos = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+  return candidatos.find((m) => MediaRecorder.isTypeSupported(m));
+}
+
+function extDeMime(mime: string): string {
+  if (mime.includes("ogg")) return "ogg";
+  if (mime.includes("mp4")) return "m4a";
+  if (mime.includes("mpeg")) return "mp3";
+  return "webm";
+}
+
+function formatDur(seg: number): string {
+  const m = Math.floor(seg / 60);
+  const s = seg % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export function MessageThread({
   conversa,
   onEnviar,
+  onEnviarMidia,
   onAssumir,
   onEncerrar,
   onReabrir,
@@ -45,6 +72,11 @@ export function MessageThread({
 }: {
   conversa: Conversa;
   onEnviar: (texto: string) => void;
+  onEnviarMidia: (
+    arquivo: Blob,
+    tipo: "imagem" | "audio",
+    nomeArquivo: string
+  ) => void;
   onAssumir: () => void;
   onEncerrar: () => void;
   onReabrir: () => void;
@@ -52,12 +84,18 @@ export function MessageThread({
   className?: string;
 }) {
   const [texto, setTexto] = useState("");
+  const [gravando, setGravando] = useState(false);
+  const [duracao, setDuracao] = useState(0);
   const mensagensRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const cancelandoRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
 
   const encerrada = conversa.status === "encerrada";
   const telDigitos = conversa.telefone.replace(/\D/g, "");
 
-  // Rola para a última mensagem ao trocar de conversa ou receber mensagem nova.
   useEffect(() => {
     const el = mensagensRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -68,6 +106,56 @@ export function MessageThread({
     if (!t) return;
     onEnviar(t);
     setTexto("");
+  }
+
+  function aoEscolherArquivo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const tipo = file.type.startsWith("audio") ? "audio" : "imagem";
+    onEnviarMidia(file, tipo, file.name);
+  }
+
+  async function iniciarGravacao() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = melhorMimeAudio();
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunksRef.current = [];
+      cancelandoRef.current = false;
+      rec.ondataavailable = (ev) => {
+        if (ev.data.size) chunksRef.current.push(ev.data);
+      };
+      rec.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        if (timerRef.current) window.clearInterval(timerRef.current);
+        if (!cancelandoRef.current && chunksRef.current.length) {
+          const tipoBlob = rec.mimeType || "audio/webm";
+          const blob = new Blob(chunksRef.current, { type: tipoBlob });
+          onEnviarMidia(blob, "audio", `nota-de-voz.${extDeMime(tipoBlob)}`);
+        }
+        setGravando(false);
+        setDuracao(0);
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setGravando(true);
+      setDuracao(0);
+      timerRef.current = window.setInterval(
+        () => setDuracao((d) => d + 1),
+        1000
+      );
+    } catch {
+      window.alert("Não foi possível acessar o microfone.");
+    }
+  }
+
+  function pararEEnviar() {
+    recorderRef.current?.stop();
+  }
+  function cancelarGravacao() {
+    cancelandoRef.current = true;
+    recorderRef.current?.stop();
   }
 
   return (
@@ -177,41 +265,91 @@ export function MessageThread({
         </div>
       ) : (
         <div className="border-t border-border bg-surface p-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,audio/*"
+            className="hidden"
+            onChange={aoEscolherArquivo}
+          />
           <div className="flex items-end gap-2">
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Anexar"
+              aria-label="Anexar imagem ou áudio"
               className="shrink-0"
+              onClick={() => fileRef.current?.click()}
+              disabled={gravando}
             >
               <Paperclip className="size-4" />
             </Button>
-            <textarea
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  enviar();
-                }
-              }}
-              rows={1}
-              placeholder="Escreva uma mensagem…"
-              className="max-h-32 min-h-9 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
-            />
-            <Button
-              variant="brand"
-              size="icon"
-              aria-label="Enviar"
-              onClick={enviar}
-              disabled={!texto.trim()}
-              className="shrink-0"
-            >
-              <SendHorizontal className="size-4" />
-            </Button>
+
+            {gravando ? (
+              <div className="flex h-9 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
+                <span className="size-2 animate-pulse rounded-full bg-destructive" />
+                <span className="tabular text-sm text-muted-foreground">
+                  Gravando… {formatDur(duracao)}
+                </span>
+                <button
+                  onClick={cancelarGravacao}
+                  aria-label="Cancelar gravação"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            ) : (
+              <textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    enviar();
+                  }
+                }}
+                rows={1}
+                placeholder="Escreva uma mensagem…"
+                className="max-h-32 min-h-9 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
+              />
+            )}
+
+            {gravando ? (
+              <Button
+                variant="brand"
+                size="icon"
+                aria-label="Enviar áudio"
+                onClick={pararEEnviar}
+                className="shrink-0"
+              >
+                <SendHorizontal className="size-4" />
+              </Button>
+            ) : texto.trim() ? (
+              <Button
+                variant="brand"
+                size="icon"
+                aria-label="Enviar"
+                onClick={enviar}
+                className="shrink-0"
+              >
+                <SendHorizontal className="size-4" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Gravar áudio"
+                onClick={iniciarGravacao}
+                className="shrink-0"
+              >
+                <Mic className="size-4" />
+              </Button>
+            )}
           </div>
           <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
-            Enter envia · Shift+Enter quebra linha
+            {gravando
+              ? "Toque no enviar para mandar a nota de voz"
+              : "Enter envia · Shift+Enter quebra linha"}
           </p>
         </div>
       )}
@@ -228,6 +366,9 @@ function Bubble({
 }) {
   const daEmpresa = mensagem.autor !== "cliente";
   const agente = mensagem.autor === "agente";
+  const ehImagem = mensagem.tipo === "imagem" && !!mensagem.mediaUrl;
+  const ehAudio = mensagem.tipo === "audio" && !!mensagem.mediaUrl;
+  const temMedia = ehImagem || ehAudio;
 
   return (
     <div className={cn("flex", daEmpresa ? "justify-end" : "justify-start")}>
@@ -240,14 +381,36 @@ function Bubble({
         ) : null}
         <div
           className={cn(
-            "rounded-lg border px-3 py-2 text-sm leading-snug whitespace-pre-wrap",
+            "overflow-hidden rounded-lg border text-sm leading-snug",
+            temMedia ? "p-1" : "whitespace-pre-wrap px-3 py-2",
             !daEmpresa && "rounded-tl-sm border-border bg-elevated",
             daEmpresa && !agente && "rounded-tr-sm border-white/10 bg-white/[0.08]",
             agente && "rounded-tr-sm border-brand/25 bg-brand-muted",
             mensagem.falhou && "border-destructive/50 opacity-80"
           )}
         >
-          {mensagem.texto}
+          {ehImagem ? (
+            <a href={mensagem.mediaUrl} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mensagem.mediaUrl}
+                alt={mensagem.texto || "Imagem"}
+                className="max-h-72 w-full rounded-[5px] object-cover"
+              />
+            </a>
+          ) : null}
+          {ehAudio ? (
+            <audio
+              controls
+              src={mensagem.mediaUrl}
+              className="h-10 w-56 max-w-full"
+            />
+          ) : null}
+          {mensagem.texto ? (
+            <div className={cn(temMedia && "px-2 pb-1 pt-1.5")}>
+              {mensagem.texto}
+            </div>
+          ) : null}
         </div>
         <p
           className={cn(

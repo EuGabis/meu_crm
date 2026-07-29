@@ -101,6 +101,41 @@ export default function InboxPage() {
     );
   }
 
+  async function enviarMidia(
+    arquivo: Blob,
+    tipo: "imagem" | "audio",
+    nome: string
+  ) {
+    if (!selId) return;
+    const form = new FormData();
+    form.append("arquivo", arquivo, nome);
+    form.append("tipo", tipo);
+
+    const res = await fetch(`/api/whatsapp/conversas/${selId}/mensagens`, {
+      method: "POST",
+      body: form,
+    });
+
+    if (!res.ok) {
+      await carregar();
+      return;
+    }
+
+    const { mensagem } = await res.json();
+    setConversas((prev) =>
+      prev.map((c) =>
+        c.id === selId
+          ? {
+              ...c,
+              atendidoPor: "humano",
+              ultimaHora: mensagem.hora,
+              mensagens: [...c.mensagens, mensagem],
+            }
+          : c
+      )
+    );
+  }
+
   function assumir() {
     if (!selId) return;
     setConversas((prev) =>
@@ -179,6 +214,7 @@ export default function InboxPage() {
         <MessageThread
           conversa={conversasExibicao.find((c) => c.id === sel.id) ?? sel}
           onEnviar={enviar}
+          onEnviarMidia={enviarMidia}
           onAssumir={assumir}
           onEncerrar={() => mudarStatus("encerrada")}
           onReabrir={() => mudarStatus("aberta")}

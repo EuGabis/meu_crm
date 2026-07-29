@@ -13,6 +13,14 @@ export interface DbMessageRow {
   body: string;
   status: string | null;
   sent_at: string;
+  media_type?: string | null;
+  media_path?: string | null;
+  mime_type?: string | null;
+}
+
+function mediaUrlFor(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  return `/api/whatsapp/media?path=${encodeURIComponent(path)}`;
 }
 
 export interface DbConversationRow {
@@ -43,6 +51,13 @@ export function mapConversationRow(row: DbConversationRow): Conversa {
       hora: formatHora(m.sent_at),
       dataISO: m.sent_at,
       falhou: m.status === "failed",
+      tipo: (m.media_type === "image"
+        ? "imagem"
+        : m.media_type === "audio"
+          ? "audio"
+          : "texto") as Mensagem["tipo"],
+      mediaUrl: mediaUrlFor(m.media_path),
+      mimeType: m.mime_type ?? undefined,
     }));
 
   return {

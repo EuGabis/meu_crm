@@ -101,7 +101,7 @@ export async function setWebhook(
         url,
         events,
         byEvents: false,
-        base64: false,
+        base64: true, // inclui a mídia (base64) no payload das mensagens recebidas
         headers: { apikey: headerSecret },
       },
     }),
@@ -119,4 +119,68 @@ export async function sendTextMessage(
     body: JSON.stringify({ number, text }),
   });
   return { evolutionMessageId: data?.key?.id ?? `local-${crypto.randomUUID()}` };
+}
+
+/** Envia imagem (ou outro documento) via base64. */
+export async function sendMediaMessage(
+  remoteJid: string,
+  opts: {
+    mediatype: "image" | "document";
+    mimetype: string;
+    base64: string;
+    fileName: string;
+    caption?: string;
+  }
+): Promise<{ evolutionMessageId: string }> {
+  const { instanceName } = evolutionConfig();
+  const number = remoteJid.split("@")[0];
+  const data = await evolutionFetch(`/message/sendMedia/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({
+      number,
+      mediatype: opts.mediatype,
+      mimetype: opts.mimetype,
+      caption: opts.caption ?? "",
+      media: opts.base64,
+      fileName: opts.fileName,
+    }),
+  });
+  return { evolutionMessageId: data?.key?.id ?? `local-${crypto.randomUUID()}` };
+}
+
+/** Envia áudio como nota de voz (PTT). `audioBase64` sem o prefixo data:. */
+export async function sendAudioMessage(
+  remoteJid: string,
+  audioBase64: string
+): Promise<{ evolutionMessageId: string }> {
+  const { instanceName } = evolutionConfig();
+  const number = remoteJid.split("@")[0];
+  const data = await evolutionFetch(`/message/sendWhatsAppAudio/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({ number, audio: audioBase64, encoding: true }),
+  });
+  return { evolutionMessageId: data?.key?.id ?? `local-${crypto.randomUUID()}` };
+}
+
+/** Baixa a mídia de uma mensagem recebida (fallback quando o webhook não trouxe base64). */
+export async function getMediaBase64(messageKey: {
+  id?: string;
+  remoteJid?: string;
+  fromMe?: boolean;
+}): Promise<{ base64: string; mimetype: string } | null> {
+  const { instanceName } = evolutionConfig();
+  try {
+    const data = await evolutionFetch(
+      `/chat/getBase64FromMediaMessage/${instanceName}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ message: { key: messageKey }, convertToMp4: false }),
+      }
+    );
+    if (!data?.base64) return null;
+    return { base64: data.base64, mimetype: data.mimetype ?? "application/octet-stream" };
+  } catch (error) {
+    console.error("[evolution/getMediaBase64]", error);
+    return null;
+  }
 }

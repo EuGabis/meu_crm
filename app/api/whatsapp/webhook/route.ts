@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { refreshInstanceFromEvolution, setInstanceStatus } from "@/lib/whatsapp/instance-store";
 import { resolveOrCreateContact } from "@/lib/whatsapp/contact-link";
+import { getMediaBase64 } from "@/lib/evolution/client";
+import { uploadWhatsappMedia } from "@/lib/whatsapp/media-store";
 
 interface EvolutionWebhookBody {
   event: string;
@@ -15,6 +17,23 @@ function extractText(message: Record<string, unknown> | undefined): string | nul
   if (typeof conversation === "string") return conversation;
   const extended = message["extendedTextMessage"] as { text?: string } | undefined;
   if (extended?.text) return extended.text;
+  return null;
+}
+
+function extractMedia(
+  message: Record<string, unknown> | undefined
+): { tipo: "image" | "audio"; mimetype: string; caption: string } | null {
+  if (!message) return null;
+  const img = message["imageMessage"] as
+    | { mimetype?: string; caption?: string }
+    | undefined;
+  if (img) {
+    return { tipo: "image", mimetype: img.mimetype ?? "image/jpeg", caption: img.caption ?? "" };
+  }
+  const aud = message["audioMessage"] as { mimetype?: string } | undefined;
+  if (aud) {
+    return { tipo: "audio", mimetype: aud.mimetype ?? "audio/ogg", caption: "" };
+  }
   return null;
 }
 
@@ -62,8 +81,10 @@ async function handleMessagesUpsert(data: Record<string, unknown>) {
   const remoteJid = key?.remoteJid;
   if (!remoteJid || remoteJid.endsWith("@g.us")) return; // ignora grupos
 
-  const text = extractText(data?.message as Record<string, unknown> | undefined);
-  if (!text) return; // MVP só suporta texto — mídia é ignorada por enquanto
+  const message = data?.message as Record<string, unknown> | undefined;
+  const text = extractText(message);
+  const midia = extractMedia(message);
+  if (!text && !midia) return; // ignora tipos ainda não suportados
 
   const messageId = key?.id;
   if (!messageId) return;
@@ -121,15 +142,54 @@ async function handleMessagesUpsert(data: Record<string, unknown>) {
     }
   }
 
+  let mediaType: string | null = null;
+  let mediaPath: string | null = null;
+  let mimeType: string | null = null;
+  let body = text ?? "";
+
+  if (midia) {
+    mediaType = midia.tipo;
+    mimeType = midia.mimetype;
+    body = midia.caption;
+
+    // Com base64:true no webhook, a Evolution manda o arquivo direto;
+    // se não vier, buscamos sob demanda.
+    let b64 =
+      (message?.["base64"] as string | undefined) ??
+      (data?.["base64"] as string | undefined) ??
+      null;
+    let mime = midia.mimetype;
+
+    if (!b64) {
+      const baixado = await getMediaBase64({ id: messageId, remoteJid, fromMe });
+      if (baixado) {
+        b64 = baixado.base64;
+        mime = baixado.mimetype;
+      }
+    }
+
+    if (b64) {
+      try {
+        mediaPath = await uploadWhatsappMedia(supabase, conversation.id, b64, mime);
+        mimeType = mime;
+      } catch (error) {
+        console.error("[whatsapp/webhook] upload de mídia falhou", error);
+      }
+    }
+  }
+
   const { error: msgError } = await supabase.from("whatsapp_messages").upsert(
     {
       conversation_id: conversation.id,
       evolution_message_id: messageId,
       direction: fromMe ? "outbound" : "inbound",
       sender: fromMe ? "atendente" : "cliente",
-      body: text,
+      body,
       status: "delivered",
       sent_at: sentAt,
+      media_type: mediaType,
+      media_path: mediaPath,
+      mime_type: mimeType,
     },
     { onConflict: "evolution_message_id", ignoreDuplicates: true }
   );

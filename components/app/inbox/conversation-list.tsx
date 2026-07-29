@@ -96,6 +96,12 @@ export function ConversationList({
               : ultima?.autor === "agente"
                 ? "🤖 "
                 : "Você: ";
+          const resumo =
+            ultima?.tipo === "imagem"
+              ? "📷 Foto"
+              : ultima?.tipo === "audio"
+                ? "🎤 Áudio"
+                : (ultima?.texto ?? "");
           return (
             <button
               key={c.id}
@@ -123,7 +129,7 @@ export function ConversationList({
                 <div className="mt-0.5 flex items-center justify-between gap-2">
                   <p className="truncate text-xs text-muted-foreground">
                     {prefixo}
-                    {ultima?.texto}
+                    {resumo}
                   </p>
                   {c.naoLidas > 0 ? (
                     <span className="tabular flex size-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-foreground">
