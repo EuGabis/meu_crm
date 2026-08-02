@@ -14,6 +14,7 @@ import {
   Workflow,
   Settings,
   Users2,
+  Send,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ const NAV: NavItem[] = [
   { href: "/painel", label: "Painel", icon: LayoutDashboard },
   { href: "/inbox", label: "Inbox", icon: MessageCircle },
   { href: "/grupos", label: "Grupos", icon: Users2 },
+  { href: "/disparos", label: "Disparos", icon: Send },
   { href: "/contatos", label: "Contatos", icon: Users },
   { href: "/pipeline", label: "Pipeline", icon: Columns3 },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
