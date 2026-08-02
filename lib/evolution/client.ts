@@ -162,6 +162,75 @@ export async function sendAudioMessage(
   return { evolutionMessageId: data?.key?.id ?? `local-${crypto.randomUUID()}` };
 }
 
+// ---------------------------------------------------------------------------
+// Grupos
+// ---------------------------------------------------------------------------
+
+export interface EvolutionGroup {
+  id: string; // JID do grupo (…@g.us)
+  subject: string; // nome do grupo
+  size: number | null; // nº de participantes
+  pictureUrl: string | null;
+}
+
+/** Lista os grupos em que o número conectado participa. */
+export async function fetchGroups(): Promise<EvolutionGroup[]> {
+  const { instanceName } = evolutionConfig();
+  const data = await evolutionFetch(
+    `/group/fetchAllGroups/${instanceName}?getParticipants=false`
+  );
+  const groups = Array.isArray(data) ? data : [];
+  return groups.map((g: Record<string, unknown>) => ({
+    id: String(g.id ?? ""),
+    subject: String(g.subject ?? "Grupo sem nome"),
+    size: typeof g.size === "number" ? g.size : null,
+    pictureUrl: (g.pictureUrl as string) ?? null,
+  }));
+}
+
+/**
+ * Envia texto para um JID de grupo (…@g.us).
+ * Diferente de sendTextMessage: NÃO faz split no "@" — a Evolution aceita o
+ * JID completo do grupo no campo `number`.
+ */
+export async function sendGroupTextMessage(
+  groupJid: string,
+  text: string
+): Promise<{ evolutionMessageId: string }> {
+  const { instanceName } = evolutionConfig();
+  const data = await evolutionFetch(`/message/sendText/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({ number: groupJid, text }),
+  });
+  return { evolutionMessageId: data?.key?.id ?? `local-${crypto.randomUUID()}` };
+}
+
+/** Envia imagem (base64) para um JID de grupo (…@g.us). */
+export async function sendGroupMediaMessage(
+  groupJid: string,
+  opts: {
+    mediatype: "image" | "document";
+    mimetype: string;
+    base64: string;
+    fileName: string;
+    caption?: string;
+  }
+): Promise<{ evolutionMessageId: string }> {
+  const { instanceName } = evolutionConfig();
+  const data = await evolutionFetch(`/message/sendMedia/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({
+      number: groupJid,
+      mediatype: opts.mediatype,
+      mimetype: opts.mimetype,
+      caption: opts.caption ?? "",
+      media: opts.base64,
+      fileName: opts.fileName,
+    }),
+  });
+  return { evolutionMessageId: data?.key?.id ?? `local-${crypto.randomUUID()}` };
+}
+
 /** Baixa a mídia de uma mensagem recebida (fallback quando o webhook não trouxe base64). */
 export async function getMediaBase64(messageKey: {
   id?: string;
