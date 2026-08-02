@@ -133,33 +133,27 @@ CRUD completo de grupos, escopado por usuário logado (isolamento §3.1):
 Ordem recomendada (da spec §7). Itens 1–3 são construíveis JÁ (não dependem da
 Shopee). Item 4 depende de resolver o bloqueio da API (ver §5).
 
-### FALTA 1 — Módulo `disparos` (PRÓXIMO, prioridade máxima) 🔜
-**Objetivo:** pegar um `content` do tipo `whatsapp` e enviá-lo aos grupos ativos,
-respeitando limites e a pausa de emergência, gravando `dispatch_log`.
+### FALTA 1 — Módulo `disparos` ✅ FEITO (commit `c7b01ff`)
+Implementado em `modules/disparos/`:
+- `POST /api/disparos` body `{ contentId, groupIds? }` — envia aos grupos ativos
+  do usuário, respeita `pausado` (retorna 423) e os limites por minuto/hora
+  (conta envios recentes em `dispatch_log`, envia até o orçamento), com
+  `sleep(intervalo_ms)` entre mensagens. Grava `dispatch_log` e marca
+  `content.status='enviado'`. **Instagram é bloqueado** (nunca envia sozinho).
+- `GET/PATCH /api/disparos/settings` — limites + **pausa de emergência**.
+- `GET /api/disparos/log` — histórico recente (join com nome do grupo).
+- UI `/disparos` — botão de pausa em destaque, edição de limites, histórico.
+- Helper novo: `lib/auth/current-user.ts` (`currentUserId()`).
 
-**Como fazer:**
-- `modules/disparos/api/disparar.ts`:
-  - `POST /api/disparos` com body `{ contentId, groupIds? }` (se omitir groupIds,
-    usa todos os grupos ativos do usuário).
-  - Ler `dispatch_settings`. **Se `pausado === true`, abortar** e retornar 423/409
-    com mensagem clara; gravar nada ou gravar `status='pausado'`.
-  - Enviar em sequência com `await sleep(intervalo_ms)` entre grupos
-    (respeitar `msgs_por_minuto`/`msgs_por_hora` — checar contagem recente em
-    `dispatch_log` na última hora/minuto antes de enviar).
-  - Para cada grupo: `sendGroupTextMessage(group.identificador_grupo, content.texto)`;
-    inserir linha em `dispatch_log` (`status='enviado'` ou `'falhou'` + `erro`).
-  - Ao final, marcar `content.status = 'enviado'`.
-- `modules/disparos/api/settings.ts`: `GET/PATCH /api/disparos/settings` para
-  editar limites e **o botão de pausa de emergência** (`pausado`).
-- UI: um painel de controle de disparo + **botão grande de PAUSA** (spec §3.4)
-  que dá `PATCH { pausado: true }`. Mostrar limites atuais e histórico recente.
-- ⚠️ Vercel Functions têm timeout (300s). Para muitos grupos, considerar
-  **Vercel Queues** ou disparar em background; para v1, um loop sequencial com
-  poucos grupos basta, mas documente o limite.
+> ⚠️ Limite conhecido: para MUITOS grupos, o loop sequencial pode estourar o
+> timeout de 300s da Vercel Function. Para escala, migrar para **Vercel Queues**
+> ou background job. Para v1 (poucos grupos) está ok.
+>
+> 🔌 **Ponto de integração:** o módulo `conteudos` (FALTA 2) deve chamar
+> `POST /api/disparos` com o `contentId` recém-gerado (tipo whatsapp) para
+> disparar automaticamente após gerar.
 
-**Tabelas:** `dispatch_settings`, `dispatch_log` (já existem na migration).
-
-### FALTA 2 — Módulo `conteudos` (geração de conteúdo)
+### FALTA 2 — Módulo `conteudos` (geração de conteúdo) 🔜 PRÓXIMO
 **Objetivo:** dado um `product`, gerar automaticamente descrição + bullets +
 inserir cupom/link, em duas versões (WhatsApp e Instagram).
 
